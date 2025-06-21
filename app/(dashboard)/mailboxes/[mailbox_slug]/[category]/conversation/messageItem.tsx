@@ -26,7 +26,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
 import { api } from "@/trpc/react";
-import { renderMessageBody } from "./renderMessageBody";
+import { highlightSearchTerm, renderMessageBody } from "./renderMessageBody";
 
 function getPreviewUrl(file: AttachedFile): string {
   return file.previewUrl
@@ -45,14 +45,15 @@ const MessageItem = ({
   conversation,
   message,
   onViewDraftedReply,
-
   onPreviewAttachment,
+  searchQuery,
 }: {
   mailboxSlug: string;
   conversation: Conversation;
   message: (MessageType | NoteType) & { isNew?: boolean };
   onPreviewAttachment?: (index: number) => void;
   onViewDraftedReply?: () => void;
+  searchQuery?: string;
 }) => {
   const userMessage = message.role === "user";
   const rightAlignedMessage = !userMessage || message.type === "note";
@@ -76,7 +77,15 @@ const MessageItem = ({
       ) : (
         <Bot className="h-3 w-3" />
       )}
-      {message.from ? message.from : message.role === "user" ? "Anonymous" : "Helper agent"}
+      {searchQuery && message.from ? (
+        <span dangerouslySetInnerHTML={{ __html: highlightSearchTerm(message.from, searchQuery) }} />
+      ) : message.from ? (
+        message.from
+      ) : message.role === "user" ? (
+        "Anonymous"
+      ) : (
+        "Helper agent"
+      )}
     </span>,
   );
   if (message.type === "message" && message.emailTo)
@@ -143,8 +152,9 @@ const MessageItem = ({
         body: message.body,
         isMarkdown: isChatMessage || message.type === "note" || isAIMessage,
         className: "lg:prose-base prose-sm **:text-foreground! **:bg-transparent!",
+        searchQuery,
       }),
-    [message.body, message.type, isAIMessage],
+    [message.body, message.type, isAIMessage, searchQuery],
   );
 
   const splitMergedMutation = api.mailbox.conversations.splitMerged.useMutation({

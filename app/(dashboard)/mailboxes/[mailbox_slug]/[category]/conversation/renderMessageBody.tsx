@@ -27,17 +27,48 @@ const adjustAttributes = (html: string) => {
   }
 };
 
-export const PlaintextContent = ({ text }: { text: string }) =>
-  text.split("\n").map((line, i) => <p key={i}>{line}</p>);
+export const highlightSearchTerm = (text: string, searchTerm: string): string => {
+  if (!searchTerm || searchTerm.trim() === "") return text;
+
+  const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+  return text.replace(
+    regex,
+    '<mark class="bg-blue-100 dark:bg-blue-900/50 text-blue-900 dark:text-blue-100 rounded px-1 py-0.5 font-medium">$1</mark>',
+  );
+};
+
+export const PlaintextContent = ({ text, searchQuery }: { text: string; searchQuery?: string }) => {
+  const lines = text.split("\n");
+
+  if (searchQuery) {
+    return (
+      <>
+        {lines.map((line, i) => (
+          <p key={i} dangerouslySetInnerHTML={{ __html: highlightSearchTerm(line, searchQuery) }} />
+        ))}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {lines.map((line, i) => (
+        <p key={i}>{line}</p>
+      ))}
+    </>
+  );
+};
 
 export const renderMessageBody = ({
   body,
   isMarkdown,
   className,
+  searchQuery,
 }: {
   body: string | null;
   isMarkdown: boolean;
   className?: string;
+  searchQuery?: string;
 }) => {
   if (isMarkdown) {
     return {
@@ -48,8 +79,13 @@ export const renderMessageBody = ({
 
   if (body?.includes("<") && body.includes(">")) {
     const { mainContent: parsedMain, quotedContext: parsedQuoted } = extractEmailParts(body || "");
-    const adjustedMain = adjustAttributes(parsedMain);
-    const adjustedQuoted = parsedQuoted ? adjustAttributes(parsedQuoted) : "";
+    let adjustedMain = adjustAttributes(parsedMain);
+    let adjustedQuoted = parsedQuoted ? adjustAttributes(parsedQuoted) : "";
+
+    if (searchQuery) {
+      adjustedMain = highlightSearchTerm(adjustedMain, searchQuery);
+      adjustedQuoted = adjustedQuoted ? highlightSearchTerm(adjustedQuoted, searchQuery) : "";
+    }
 
     return {
       mainContent: <div className={cn(className, "prose")} dangerouslySetInnerHTML={{ __html: adjustedMain }} />,
@@ -62,7 +98,11 @@ export const renderMessageBody = ({
   return {
     mainContent: (
       <div className={cn(className, "prose")}>
-        {!body ? <span className="text-muted-foreground">(no content)</span> : <PlaintextContent text={body} />}
+        {!body ? (
+          <span className="text-muted-foreground">(no content)</span>
+        ) : (
+          <PlaintextContent text={body} searchQuery={searchQuery} />
+        )}
       </div>
     ),
     quotedContext: null,

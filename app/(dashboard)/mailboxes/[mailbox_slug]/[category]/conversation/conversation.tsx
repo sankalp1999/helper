@@ -3,17 +3,20 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Download,
   Info,
   Link as LinkIcon,
   PanelRightClose,
   PanelRightOpen,
+  Search,
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useMediaQuery } from "react-responsive";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { create } from "zustand";
@@ -40,6 +43,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -56,6 +60,84 @@ import { MessageActions } from "./messageActions";
 export type ConversationWithNewMessages = Omit<ConversationType, "messages"> & {
   messages: ((Message | Note | ConversationEvent) & { isNew?: boolean })[];
 };
+
+export type SearchState = {
+  query: string;
+  isActive: boolean;
+  matches: { messageId: string; messageIndex: number }[];
+  currentMatchIndex: number;
+};
+
+export const useConversationSearchStore = create<{
+  searchState: SearchState;
+  setSearchQuery: (query: string) => void;
+  setSearchActive: (active: boolean) => void;
+  setMatches: (matches: { messageId: string; messageIndex: number }[]) => void;
+  setCurrentMatchIndex: (index: number) => void;
+  nextMatch: () => void;
+  previousMatch: () => void;
+  resetSearch: () => void;
+}>()(
+  devtools(
+    (set, get) => ({
+      searchState: {
+        query: "",
+        isActive: false,
+        matches: [],
+        currentMatchIndex: -1,
+      },
+      setSearchQuery: (query) =>
+        set((state) => ({
+          searchState: { ...state.searchState, query },
+        })),
+      setSearchActive: (active) =>
+        set((state) => ({
+          searchState: { ...state.searchState, isActive: active },
+        })),
+      setMatches: (matches) =>
+        set((state) => ({
+          searchState: {
+            ...state.searchState,
+            matches,
+            currentMatchIndex: matches.length > 0 ? 0 : -1,
+          },
+        })),
+      setCurrentMatchIndex: (index) =>
+        set((state) => ({
+          searchState: { ...state.searchState, currentMatchIndex: index },
+        })),
+      nextMatch: () => {
+        const { searchState } = get();
+        if (searchState.matches.length === 0) return;
+        const nextIndex = (searchState.currentMatchIndex + 1) % searchState.matches.length;
+        set((state) => ({
+          searchState: { ...state.searchState, currentMatchIndex: nextIndex },
+        }));
+      },
+      previousMatch: () => {
+        const { searchState } = get();
+        if (searchState.matches.length === 0) return;
+        const prevIndex =
+          searchState.currentMatchIndex === 0 ? searchState.matches.length - 1 : searchState.currentMatchIndex - 1;
+        set((state) => ({
+          searchState: { ...state.searchState, currentMatchIndex: prevIndex },
+        }));
+      },
+      resetSearch: () =>
+        set({
+          searchState: {
+            query: "",
+            isActive: false,
+            matches: [],
+            currentMatchIndex: -1,
+          },
+        }),
+    }),
+    {
+      name: "conversation-search-store",
+    },
+  ),
+);
 
 const { Carousel, CarouselButton, CarouselContext } = createCarousel<AttachedFile>();
 
@@ -180,6 +262,28 @@ const MessageThreadPanel = ({
   setPreviewFiles: (files: AttachedFile[]) => void;
 }) => {
   const { mailboxSlug, data: conversationInfo } = useConversationContext();
+  const { searchState } = useConversationSearchStore();
+
+  useEffect(() => {
+    if (
+      searchState.isActive &&
+      searchState.matches.length > 0 &&
+      searchState.currentMatchIndex >= 0 &&
+      scrollRef.current
+    ) {
+      const currentMatch = searchState.matches[searchState.currentMatchIndex];
+      if (currentMatch) {
+        const messageElement = document.querySelector(`[data-message-id="${currentMatch.messageId}"]`);
+        if (messageElement) {
+          messageElement.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+            inline: "nearest",
+          });
+        }
+      }
+    }
+  }, [searchState.currentMatchIndex, searchState.isActive, scrollRef]);
 
   return (
     <div className="grow overflow-y-auto relative" ref={scrollRef}>
@@ -194,6 +298,7 @@ const MessageThreadPanel = ({
                 setPreviewFileIndex(currentIndex);
                 setPreviewFiles(message.files);
               }}
+              searchQuery={searchState.isActive ? searchState.query : ""}
             />
           )}
         </div>
@@ -231,11 +336,70 @@ const ConversationHeader = ({
   const { minimize, moveToNextConversation, moveToPreviousConversation, currentIndex, currentTotal, hasNextPage } =
     useConversationListContext();
 
+  const { searchState, setSearchQuery, setSearchActive, setMatches, nextMatch, previousMatch, resetSearch } =
+    useConversationSearchStore();
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const searchInMessages = useCallback(
+    (query: string) => {
+      if (!conversationInfo || !query.trim()) {
+        setMatches([]);
+        return;
+      }
+
+      const matches: { messageId: string; messageIndex: number }[] = [];
+      const searchTerm = query.toLowerCase();
+
+      conversationInfo.messages.forEach((message, index) => {
+        if (message.type === "message" || message.type === "note") {
+          const bodyText = message.body?.toLowerCase() || "";
+          const fromText = message.from?.toLowerCase() || "";
+
+          if (bodyText.includes(searchTerm) || fromText.includes(searchTerm)) {
+            matches.push({ messageId: message.id.toString(), messageIndex: index });
+          }
+        }
+      });
+
+      setMatches(matches);
+    },
+    [conversationInfo, setMatches],
+  );
+
+  const handleSearchToggle = () => {
+    if (searchState.isActive) {
+      resetSearch();
+    } else {
+      setSearchActive(true);
+      setTimeout(() => searchInputRef.current?.focus(), 100);
+    }
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    searchInMessages(value);
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (e.shiftKey) {
+        previousMatch();
+      } else {
+        nextMatch();
+      }
+    } else if (e.key === "Escape") {
+      resetSearch();
+    }
+  };
+
   return (
     <div
       className={cn(
-        "flex items-center border-b border-border h-12 px-2 md:px-4 gap-x-2",
+        "flex items-center border-b border-border px-2 md:px-4 gap-x-2",
         !conversationInfo && "hidden",
+        searchState.isActive ? "h-auto min-h-12 py-2" : "h-12",
       )}
       style={{ minHeight: 48 }}
     >
@@ -256,12 +420,56 @@ const ConversationHeader = ({
           </Button>
         </div>
       </div>
-      <div className="flex-1 min-w-0 flex justify-center">
-        <div className="truncate text-base font-semibold text-foreground text-center max-w-full">
-          {conversationMetadata.subject ?? "(no subject)"}
+
+      {searchState.isActive ? (
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          <div className="flex items-center gap-2 bg-muted rounded-md px-3 py-1 flex-1 min-w-0">
+            <Search className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <Input
+              ref={searchInputRef}
+              value={searchState.query}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              placeholder="Search in conversation..."
+              className="border-0 bg-transparent p-0 h-auto focus-visible:ring-0 flex-1"
+            />
+            {searchState.matches.length > 0 && (
+              <div className="flex items-center gap-1 text-sm text-muted-foreground flex-shrink-0">
+                <span>
+                  {searchState.currentMatchIndex + 1} of {searchState.matches.length}
+                </span>
+                <Button variant="ghost" size="sm" iconOnly onClick={previousMatch}>
+                  <ChevronUp className="h-3 w-3" />
+                </Button>
+                <Button variant="ghost" size="sm" iconOnly onClick={nextMatch}>
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+            <Button variant="ghost" size="sm" iconOnly onClick={resetSearch}>
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex-1 min-w-0 flex justify-center">
+          <div className="truncate text-base font-semibold text-foreground text-center max-w-full">
+            {conversationMetadata.subject ?? "(no subject)"}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-2 min-w-0 flex-shrink-0 z-10 lg:w-44 justify-end">
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          onClick={handleSearchToggle}
+          className={cn(searchState.isActive && "bg-muted")}
+        >
+          <Search className="h-4 w-4" />
+          <span className="sr-only">Search conversation</span>
+        </Button>
         <CopyLinkButton />
         {conversationInfo?.id && <Viewers mailboxSlug={mailboxSlug} conversationSlug={conversationInfo.slug} />}
         <Button
