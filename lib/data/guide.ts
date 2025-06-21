@@ -14,7 +14,7 @@ import { captureExceptionAndLog } from "@/lib/shared/sentry";
 export type GuideSession = typeof guideSessions.$inferSelect;
 export type GuideSessionEvent = typeof guideSessionEvents.$inferSelect;
 
-export type GuideSessionEventData = {
+type GuideSessionEventData = {
   steps?: string[];
   state_analysis?: string;
   progress_evaluation?: string;
@@ -152,7 +152,7 @@ export const getGuideSessionsForMailbox = async (
   }
 };
 
-export const getGuideSessionReplays = async (
+const getGuideSessionReplays = async (
   sessionId: number,
 ): Promise<(typeof guideSessionReplays.$inferSelect)[]> => {
   try {

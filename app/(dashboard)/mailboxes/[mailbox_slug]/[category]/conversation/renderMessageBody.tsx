@@ -27,7 +27,7 @@ const adjustAttributes = (html: string) => {
   }
 };
 
-export const PlaintextContent = ({ text }: { text: string }) =>
+const PlaintextContent = ({ text }: { text: string }) =>
   text.split("\n").map((line, i) => <p key={i}>{line}</p>);
 
 export const renderMessageBody = ({

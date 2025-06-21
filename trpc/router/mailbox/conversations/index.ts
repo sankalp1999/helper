@@ -24,7 +24,7 @@ import { notesRouter } from "./notes";
 import { conversationProcedure } from "./procedure";
 import { toolsRouter } from "./tools";
 
-export { conversationProcedure };
+;
 
 export const conversationsRouter = {
   list: mailboxProcedure.input(searchSchema).query(async ({ input, ctx }) => {
