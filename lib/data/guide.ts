@@ -124,33 +124,7 @@ export const createGuideSessionEvent = async ({
   }
 };
 
-export const getGuideSessionsForMailbox = async (
-  mailboxId: number,
-  page = 1,
-  limit = 10,
-): Promise<{ sessions: GuideSession[]; totalCount: number }> => {
-  try {
-    const offset = (page - 1) * limit;
 
-    const totalResult = await db
-      .select({ count: count() })
-      .from(guideSessions)
-      .where(eq(guideSessions.mailboxId, mailboxId));
-    const totalCount = totalResult[0]?.count || 0;
-
-    const sessions = await db.query.guideSessions.findMany({
-      where: (gs, { eq }) => eq(gs.mailboxId, mailboxId),
-      orderBy: (gs, { desc }) => [desc(gs.createdAt)],
-      limit,
-      offset,
-    });
-
-    return { sessions, totalCount };
-  } catch (error) {
-    captureExceptionAndLog(error);
-    throw new Error("Failed to fetch guide sessions");
-  }
-};
 
 export const getGuideSessionReplays = async (
   sessionId: number,
