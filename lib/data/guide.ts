@@ -152,9 +152,7 @@ export const getGuideSessionsForMailbox = async (
   }
 };
 
-const getGuideSessionReplays = async (
-  sessionId: number,
-): Promise<(typeof guideSessionReplays.$inferSelect)[]> => {
+const getGuideSessionReplays = async (sessionId: number): Promise<(typeof guideSessionReplays.$inferSelect)[]> => {
   try {
     const replays = await db.query.guideSessionReplays.findMany({
       where: (gsr, { eq }) => eq(gsr.guideSessionId, sessionId),

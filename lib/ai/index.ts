@@ -13,7 +13,7 @@ import {
   ShortenPromptOptions,
 } from "./core";
 
-export { generateCompletion, generateEmbedding,  };
+export { generateCompletion, generateEmbedding };
 
 type CommonAIQueryOptions = {
   messages: CoreMessage[];

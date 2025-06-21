@@ -301,9 +301,7 @@ export const getNonSupportParticipants = async (conversation: Conversation): Pro
   return Array.from(participants);
 };
 
-const getLastUserMessage = async (
-  conversationId: number,
-): Promise<typeof conversationMessages.$inferSelect | null> => {
+const getLastUserMessage = async (conversationId: number): Promise<typeof conversationMessages.$inferSelect | null> => {
   const lastUserMessage = await db.query.conversationMessages.findFirst({
     where: and(eq(conversationMessages.conversationId, conversationId), eq(conversationMessages.role, "user")),
     orderBy: [desc(conversationMessages.createdAt)],

@@ -118,14 +118,4 @@ const CommandShortcut = ({ className, ...props }: React.HTMLAttributes<HTMLSpanE
 };
 CommandShortcut.displayName = "CommandShortcut";
 
-export {
-  Command,
-  
-  CommandInput,
-  CommandList,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-  
-  
-};
+export { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem };

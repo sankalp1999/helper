@@ -95,4 +95,3 @@ export const EventItem = ({ event }: { event: ConversationEvent }) => {
     </div>
   );
 };
-
