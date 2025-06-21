@@ -1,5 +1,5 @@
-import ReactMarkdown from "react-markdown";
 import React from "react";
+import ReactMarkdown from "react-markdown";
 
 const rehypeAddWbrAfterSlash = () => {
   return (tree: any) => {
@@ -141,15 +141,15 @@ export default function MessageMarkdown({ children, className, components, searc
 
   if (searchQuery) {
     const highlightText = (text: string) => {
-      if (!searchQuery || !text || typeof text !== 'string') return text;
-      
+      if (!searchQuery || !text || typeof text !== "string") return text;
+
       const regex = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
       const parts = text.split(regex);
-      
+
       return parts.map((part, index) => {
         if (regex.test(part)) {
           return (
-            <mark 
+            <mark
               key={index}
               className="bg-yellow-200 dark:bg-yellow-900/70 text-yellow-900 dark:text-yellow-100 rounded px-1 py-0.5 font-semibold border border-yellow-300 dark:border-yellow-700"
             >
@@ -163,26 +163,26 @@ export default function MessageMarkdown({ children, className, components, searc
 
     const createTextHighlighter = (Component: any) => {
       return ({ children, ...props }: any) => {
-        if (typeof children === 'string') {
+        if (typeof children === "string") {
           return React.createElement(Component, props, highlightText(children));
         }
         return React.createElement(Component, props, children);
       };
     };
 
-    customComponents.p = createTextHighlighter('p');
-    customComponents.span = createTextHighlighter('span');
-    customComponents.strong = createTextHighlighter('strong');
-    customComponents.em = createTextHighlighter('em');
-    customComponents.li = createTextHighlighter('li');
-    customComponents.h1 = createTextHighlighter('h1');
-    customComponents.h2 = createTextHighlighter('h2');
-    customComponents.h3 = createTextHighlighter('h3');
-    customComponents.h4 = createTextHighlighter('h4');
-    customComponents.h5 = createTextHighlighter('h5');
-    customComponents.h6 = createTextHighlighter('h6');
-    customComponents.blockquote = createTextHighlighter('blockquote');
-    customComponents.code = createTextHighlighter('code');
+    customComponents.p = createTextHighlighter("p");
+    customComponents.span = createTextHighlighter("span");
+    customComponents.strong = createTextHighlighter("strong");
+    customComponents.em = createTextHighlighter("em");
+    customComponents.li = createTextHighlighter("li");
+    customComponents.h1 = createTextHighlighter("h1");
+    customComponents.h2 = createTextHighlighter("h2");
+    customComponents.h3 = createTextHighlighter("h3");
+    customComponents.h4 = createTextHighlighter("h4");
+    customComponents.h5 = createTextHighlighter("h5");
+    customComponents.h6 = createTextHighlighter("h6");
+    customComponents.blockquote = createTextHighlighter("blockquote");
+    customComponents.code = createTextHighlighter("code");
   }
 
   return (
