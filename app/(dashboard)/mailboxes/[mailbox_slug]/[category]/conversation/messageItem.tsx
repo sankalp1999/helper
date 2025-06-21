@@ -154,7 +154,7 @@ const MessageItem = ({
         className: "lg:prose-base prose-sm **:text-foreground! **:bg-transparent!",
         searchQuery,
       }),
-    [message.body, message.type, isAIMessage, searchQuery],
+    [message.body, message.type, isAIMessage, isChatMessage, searchQuery],
   );
 
   const splitMergedMutation = api.mailbox.conversations.splitMerged.useMutation({

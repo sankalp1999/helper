@@ -33,7 +33,7 @@ export const highlightSearchTerm = (text: string, searchTerm: string): string =>
   const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
   return text.replace(
     regex,
-    '<mark class="bg-blue-100 dark:bg-blue-900/50 text-blue-900 dark:text-blue-100 rounded px-1 py-0.5 font-medium">$1</mark>',
+    '<mark class="bg-yellow-200 dark:bg-yellow-900/70 text-yellow-900 dark:text-yellow-100 rounded px-1 py-0.5 font-semibold border border-yellow-300 dark:border-yellow-700">$1</mark>',
   );
 };
 
@@ -72,7 +72,11 @@ export const renderMessageBody = ({
 }) => {
   if (isMarkdown) {
     return {
-      mainContent: <MessageMarkdown className={cn(className, "prose")}>{body}</MessageMarkdown>,
+      mainContent: (
+        <MessageMarkdown className={cn(className, "prose")} searchQuery={searchQuery}>
+          {body}
+        </MessageMarkdown>
+      ),
       quotedContext: null,
     };
   }
