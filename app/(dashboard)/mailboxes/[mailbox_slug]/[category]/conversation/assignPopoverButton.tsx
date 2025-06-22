@@ -2,6 +2,7 @@
 
 import { Bot, User } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useOrganizationMembers } from "@/app/(dashboard)/mailboxes/[mailbox_slug]/organizationMembersContext";
 import { AssigneeOption, AssignSelect } from "@/components/assignSelect";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -11,7 +12,6 @@ import useKeyboardShortcut from "@/components/useKeyboardShortcut";
 import { useSession } from "@/components/useSession";
 import { getFullName } from "@/lib/auth/authUtils";
 import { cn } from "@/lib/utils";
-import { api } from "@/trpc/react";
 import { useAssignTicket } from "./useAssignTicket";
 
 export const AssignPopoverButton = ({
@@ -23,11 +23,7 @@ export const AssignPopoverButton = ({
 }) => {
   const { assignTicket } = useAssignTicket();
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const { data: orgMembers = [] } = api.organization.getMembers.useQuery(undefined, {
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-  });
+  const { members: orgMembers = [] } = useOrganizationMembers();
   const { user: currentUser } = useSession() ?? {};
 
   const currentAssignee = orgMembers.find((m) => m.id === initialAssignedToId) ?? null;
@@ -103,6 +99,7 @@ export const AssignPopoverButton = ({
               onChange={handleAssignSelectChange}
               aiOption
               aiOptionSelected={!!(assignedTo && "ai" in assignedTo)}
+              members={orgMembers}
             />
 
             <div className="grid gap-1">

@@ -2,6 +2,7 @@ import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useConversationContext } from "@/app/(dashboard)/mailboxes/[mailbox_slug]/[category]/conversation/conversationContext";
 import { useAssignTicket } from "@/app/(dashboard)/mailboxes/[mailbox_slug]/[category]/conversation/useAssignTicket";
+import { useOrganizationMembers } from "@/app/(dashboard)/mailboxes/[mailbox_slug]/organizationMembersContext";
 import { KeyboardShortcut } from "@/components/keyboardShortcut";
 import { Button } from "@/components/ui/button";
 import { Command } from "@/components/ui/command";
@@ -35,11 +36,7 @@ export function TicketCommandBar({ open, onOpenChange, onInsertReply, onToggleCc
   const [page, setPage] = useState<"main" | "previous-replies" | "assignees" | "notes" | "github-issue">("main");
   const pageRef = useRef<string>("main");
   const { user: currentUser } = useSession() ?? {};
-  const { data: orgMembers } = api.organization.getMembers.useQuery(undefined, {
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-  });
+  const { members: orgMembers } = useOrganizationMembers();
   const { data: tools } = api.mailbox.conversations.tools.list.useQuery(
     { mailboxSlug, conversationSlug },
     { staleTime: Infinity, refetchOnMount: false, refetchOnWindowFocus: false, enabled: !!conversationSlug },

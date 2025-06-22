@@ -1,9 +1,9 @@
 import { Check, User } from "lucide-react";
 import { useState } from "react";
+import { useOrganizationMembers } from "@/app/(dashboard)/mailboxes/[mailbox_slug]/organizationMembersContext";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { api } from "@/trpc/react";
 
 export function AssigneeFilter({
   selectedAssignees,
@@ -14,11 +14,7 @@ export function AssigneeFilter({
 }) {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const { data: members } = api.organization.getMembers.useQuery(undefined, {
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-  });
+  const { members } = useOrganizationMembers();
 
   const filteredMembers = members?.filter((member) =>
     member.displayName.toLowerCase().includes(searchTerm.toLowerCase()),
