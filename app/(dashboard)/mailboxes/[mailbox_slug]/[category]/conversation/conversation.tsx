@@ -286,7 +286,7 @@ const MessageThreadPanel = ({
   }, [searchState.currentMatchIndex, searchState.isActive, scrollRef]);
 
   return (
-    <div className="grow overflow-y-auto relative" ref={scrollRef}>
+    <div className="grow overflow-y-auto relative" ref={scrollRef} data-conversation-area>
       <div ref={contentRef as React.RefObject<HTMLDivElement>} className="relative">
         <ScrollToTopButton scrollRef={scrollRef} />
         <div className="flex flex-col gap-8 px-4 py-4 h-full">
@@ -394,6 +394,27 @@ const ConversationHeader = ({
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        const activeElement = document.activeElement;
+        const isWithinConversation =
+          !activeElement ||
+          activeElement.closest("[data-conversation-area]") ||
+          activeElement === document.body ||
+          activeElement.tagName === "BODY";
+
+        if (isWithinConversation) {
+          e.preventDefault();
+          handleSearchToggle();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [handleSearchToggle]);
+
   return (
     <div
       className={cn(
@@ -402,6 +423,7 @@ const ConversationHeader = ({
         searchState.isActive ? "h-auto min-h-12 py-2" : "h-12",
       )}
       style={{ minHeight: 48 }}
+      data-conversation-area
     >
       <div className="flex items-center min-w-0 flex-shrink-0 z-10 lg:w-44">
         <Button variant="ghost" size="sm" iconOnly onClick={minimize} className="text-primary hover:text-foreground">
