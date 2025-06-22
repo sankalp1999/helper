@@ -27,11 +27,20 @@ const adjustAttributes = (html: string) => {
   }
 };
 
-export const highlightSearchTerm = (text: string, searchTerm: string): string => {
-  if (!searchTerm || searchTerm.trim() === "") return text;
+const escapeHtml = (text: string): string => {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+};
 
-  const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
-  return text.replace(
+export const highlightSearchTerm = (text: string, searchTerm: string): string => {
+  if (!searchTerm || searchTerm.trim() === "") return escapeHtml(text);
+
+  const escapedText = escapeHtml(text);
+  const escapedSearchTerm = escapeHtml(searchTerm);
+
+  const regex = new RegExp(`(${escapedSearchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+  return escapedText.replace(
     regex,
     '<mark class="bg-yellow-200 dark:bg-yellow-900/70 text-yellow-900 dark:text-yellow-100 rounded px-1 py-0.5 font-semibold border border-yellow-300 dark:border-yellow-700">$1</mark>',
   );

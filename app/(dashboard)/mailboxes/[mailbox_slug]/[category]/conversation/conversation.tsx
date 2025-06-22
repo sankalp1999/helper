@@ -384,14 +384,14 @@ const ConversationHeader = ({
     [conversationInfo, setMatches],
   );
 
-  const handleSearchToggle = () => {
+  const handleSearchToggle = useCallback(() => {
     if (searchState.isActive) {
       resetSearch();
     } else {
       setSearchActive(true);
       setTimeout(() => searchInputRef.current?.focus(), 100);
     }
-  };
+  }, [searchState.isActive, resetSearch, setSearchActive]);
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
