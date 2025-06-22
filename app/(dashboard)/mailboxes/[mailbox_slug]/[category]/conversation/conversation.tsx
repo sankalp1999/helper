@@ -48,6 +48,7 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useBreakpoint } from "@/components/useBreakpoint";
+import { useDebouncedCallback } from "@/components/useDebouncedCallback";
 import type { serializeMessage } from "@/lib/data/conversationMessage";
 import { conversationChannelId } from "@/lib/realtime/channels";
 import { useRealtimeEvent } from "@/lib/realtime/hooks";
@@ -384,6 +385,8 @@ const ConversationHeader = ({
     [conversationInfo, setMatches],
   );
 
+  const debouncedSearchInMessages = useDebouncedCallback(searchInMessages, 300);
+
   const handleSearchToggle = useCallback(() => {
     if (searchState.isActive) {
       resetSearch();
@@ -395,7 +398,13 @@ const ConversationHeader = ({
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
-    searchInMessages(value);
+
+    if (!value.trim()) {
+      setMatches([]);
+      return;
+    }
+
+    debouncedSearchInMessages(value);
   };
 
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
