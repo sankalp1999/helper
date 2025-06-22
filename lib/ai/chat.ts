@@ -307,7 +307,7 @@ const generateReasoning = async ({
   }
 };
 
-const generateAIResponse = async ({
+export const generateAIResponse = async ({
   messages,
   mailbox,
   conversationId,
