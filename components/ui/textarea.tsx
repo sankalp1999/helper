@@ -2,7 +2,7 @@ import * as React from "react";
 import { onModEnterKeyboardEvent } from "@/components/onModEnterKeyboardEvent";
 import { cn } from "@/lib/utils";
 
-interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   onModEnter?: () => void;
 }
 

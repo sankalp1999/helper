@@ -58,3 +58,5 @@ export const Avatar = ({ src, fallback, size = "md" }: CustomAvatarProps) => {
     </BaseAvatar>
   );
 };
+
+export { BaseAvatar, AvatarImage, AvatarFallback };
