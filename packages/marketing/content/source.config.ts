@@ -5,3 +5,10 @@ const docs = defineDocs({
   dir: "content/docs",
 });
 
+export default defineConfig({
+  mdxOptions: {
+    remarkPlugins: [remarkInstall],
+  },
+  ...docs,
+});
+
