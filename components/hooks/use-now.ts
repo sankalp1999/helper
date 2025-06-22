@@ -7,15 +7,14 @@ let intervalId: NodeJS.Timeout | null = null;
 const startTimer = () => {
   if (intervalId) return;
 
-  now = new Date();
-  for (const listener of listeners) {
-    listener(now);
-  }
-
   intervalId = setInterval(() => {
     now = new Date();
     for (const listener of listeners) {
-      listener(now);
+      try {
+        listener(now);
+      } catch (error) {
+        console.warn("Error in useNow listener:", error);
+      }
     }
   }, 60000);
 };
