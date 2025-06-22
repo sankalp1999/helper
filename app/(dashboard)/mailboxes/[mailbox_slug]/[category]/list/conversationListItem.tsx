@@ -1,6 +1,6 @@
 import { escape } from "lodash-es";
 import { Bot, User } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import scrollIntoView from "scroll-into-view-if-needed";
 import { ConversationListItem as ConversationListItemType } from "@/app/types/global";
 import HumanizedTime from "@/components/humanizedTime";
@@ -19,12 +19,12 @@ type ListItem = ConversationListItemType & { isNew?: boolean };
 type ConversationListItemProps = {
   conversation: ListItem;
   isActive: boolean;
-  onSelectConversation: (slug: string) => void;
+  onSelectConversation: () => void;
   isSelected: boolean;
   onToggleSelect: () => void;
 };
 
-export const ConversationListItem = ({
+export const ConversationListItem = memo(({
   conversation,
   isActive,
   onSelectConversation,
@@ -81,7 +81,7 @@ export const ConversationListItem = ({
             onClick={(e) => {
               if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
                 e.preventDefault();
-                onSelectConversation(conversation.slug);
+                onSelectConversation();
               }
             }}
             style={{ overflowAnchor: "none" }}
@@ -92,7 +92,7 @@ export const ConversationListItem = ({
                   <p className="text-muted-foreground truncate text-xs md:text-sm">
                     {conversation.emailFrom ?? "Anonymous"}
                   </p>
-                  {conversation.platformCustomer?.value &&
+                  {conversation.platformCustomer &&
                     (conversation.platformCustomer.isVip ? (
                       <TooltipProvider delayDuration={0}>
                         <Tooltip>
@@ -151,9 +151,11 @@ export const ConversationListItem = ({
       </div>
     </div>
   );
-};
+});
 
-export const AssignedToLabel = ({
+ConversationListItem.displayName = "ConversationListItem";
+
+export const AssignedToLabel = memo(({
   assignedToId,
   assignedToAI,
   className,
@@ -184,4 +186,6 @@ export const AssignedToLabel = ({
       {displayName}
     </div>
   ) : null;
-};
+});
+
+AssignedToLabel.displayName = "AssignedToLabel";

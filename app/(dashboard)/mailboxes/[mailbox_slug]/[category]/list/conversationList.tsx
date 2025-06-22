@@ -1,7 +1,7 @@
 import { Send } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useQueryState } from "nuqs";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConversationListItem as ConversationItem } from "@/app/types/global";
 import { toast } from "@/components/hooks/use-toast";
 import LoadingSpinner from "@/components/loadingSpinner";
@@ -49,7 +49,7 @@ export const List = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const resultsContainerRef = useRef<HTMLDivElement>(null);
 
-  const toggleAllConversations = () => {
+  const toggleAllConversations = useCallback(() => {
     if (allConversationsSelected || selectedConversations.length > 0) {
       setAllConversationsSelected(false);
       setSelectedConversations([]);
@@ -57,22 +57,26 @@ export const List = () => {
       setAllConversationsSelected(true);
       setSelectedConversations([]);
     }
-  };
+  }, [allConversationsSelected, selectedConversations.length]);
 
-  const toggleConversation = (id: number) => {
+  const toggleConversation = useCallback((id: number) => {
     if (allConversationsSelected) {
       setAllConversationsSelected(false);
       setSelectedConversations(conversations.flatMap((c) => (c.id === id ? [] : [c.id])));
     } else {
-      setSelectedConversations(
-        selectedConversations.includes(id)
-          ? selectedConversations.filter((selectedId) => selectedId !== id)
-          : [...selectedConversations, id],
+      setSelectedConversations(prev =>
+        prev.includes(id)
+          ? prev.filter((selectedId) => selectedId !== id)
+          : [...prev, id],
       );
     }
-  };
+  }, [allConversationsSelected, conversations]);
 
-  const handleBulkUpdate = (status: "closed" | "spam") => {
+  const isConversationSelected = useCallback((id: number) => {
+    return allConversationsSelected || selectedConversations.includes(id);
+  }, [allConversationsSelected, selectedConversations]);
+
+  const handleBulkUpdate = useCallback((status: "closed" | "spam") => {
     setIsBulkUpdating(true);
     try {
       const conversationFilter = allConversationsSelected ? conversations.map((c) => c.id) : selectedConversations;
@@ -97,7 +101,23 @@ export const List = () => {
     } finally {
       setIsBulkUpdating(false);
     }
-  };
+  }, [allConversationsSelected, conversations, selectedConversations, bulkUpdate, input.mailboxSlug, utils]);
+
+  const conversationCallbacks = useMemo(() => {
+    const callbacks = new Map<number, () => void>();
+    conversations.forEach(conversation => {
+      callbacks.set(conversation.id, () => toggleConversation(conversation.id));
+    });
+    return callbacks;
+  }, [conversations, toggleConversation]);
+
+  const selectCallbacks = useMemo(() => {
+    const callbacks = new Map<string, () => void>();
+    conversations.forEach(conversation => {
+      callbacks.set(conversation.slug, () => navigateToConversation(conversation.slug));
+    });
+    return callbacks;
+  }, [conversations, navigateToConversation]);
 
   useEffect(() => {
     const currentRef = loadMoreRef.current;
@@ -240,9 +260,9 @@ export const List = () => {
               key={conversation.slug}
               conversation={conversation}
               isActive={conversationSlug === conversation.slug}
-              onSelectConversation={navigateToConversation}
-              isSelected={allConversationsSelected || selectedConversations.includes(conversation.id)}
-              onToggleSelect={() => toggleConversation(conversation.id)}
+              onSelectConversation={selectCallbacks.get(conversation.slug)!}
+              isSelected={isConversationSelected(conversation.id)}
+              onToggleSelect={conversationCallbacks.get(conversation.id)!}
             />
           ))}
           <div ref={loadMoreRef} />

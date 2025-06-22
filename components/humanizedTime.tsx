@@ -1,5 +1,5 @@
 import { intervalToDuration } from "date-fns";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 
 type HumanizedTimeProps = {
   time: string | Date;
@@ -41,36 +41,41 @@ const calculateCurrentTime = (time: Date, formatter: Formatter) => {
   return "now";
 };
 
-const HumanizedTime = ({ time, titlePrefix, className, format }: HumanizedTimeProps) => {
-  const date = new Date(time);
-  const formatter = formatters[format ?? "short"];
-  const [currentTime, setCurrentTime] = useState<string>(calculateCurrentTime(date, formatter));
-
-  const [titleTime, setTitleTime] = useState(date);
+const HumanizedTime = memo(({ time, titlePrefix, className, format }: HumanizedTimeProps) => {
+  const date = useMemo(() => new Date(time), [time]);
+  const formatter = useMemo(() => formatters[format ?? "short"], [format]);
+  
+  const [currentTime, setCurrentTime] = useState<string>(() => calculateCurrentTime(date, formatter));
 
   useEffect(() => {
-    setCurrentTime(calculateCurrentTime(date, formatter));
-    setTitleTime(date);
+    const updateTime = () => {
+      setCurrentTime(calculateCurrentTime(date, formatter));
+    };
 
-    const timer = setInterval(() => setCurrentTime(calculateCurrentTime(date, formatter)), 60000);
+    updateTime();
+    const timer = setInterval(updateTime, 60000);
     return () => clearInterval(timer);
-  }, [time]);
+  }, [date, formatter]);
 
-  const longDate = titleTime.toLocaleString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+  const longDate = useMemo(() => {
+    return date.toLocaleString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  }, [date]);
 
   return (
     <span className={className} title={titlePrefix ? `${titlePrefix} ${longDate}` : longDate}>
       {currentTime}
     </span>
   );
-};
+});
+
+HumanizedTime.displayName = "HumanizedTime";
 
 export default HumanizedTime;
