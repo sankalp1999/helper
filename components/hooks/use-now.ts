@@ -6,6 +6,12 @@ let intervalId: NodeJS.Timeout | null = null;
 
 const startTimer = () => {
   if (intervalId) return;
+
+  now = new Date();
+  for (const listener of listeners) {
+    listener(now);
+  }
+
   intervalId = setInterval(() => {
     now = new Date();
     for (const listener of listeners) {
