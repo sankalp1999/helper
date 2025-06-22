@@ -521,18 +521,6 @@ const createAssistantMessage = (
   });
 };
 
-const lastAssistantMessage = (conversationId: number) =>
-  db.query.conversationMessages.findFirst({
-    where: and(eq(conversationMessages.conversationId, conversationId), eq(conversationMessages.role, "ai_assistant")),
-    orderBy: desc(conversationMessages.createdAt),
-  });
-
-const lastUserMessage = (conversationId: number) =>
-  db.query.conversationMessages.findFirst({
-    where: and(eq(conversationMessages.conversationId, conversationId), eq(conversationMessages.role, "user")),
-    orderBy: desc(conversationMessages.createdAt),
-  });
-
 export const respondWithAI = async ({
   conversation,
   mailbox,

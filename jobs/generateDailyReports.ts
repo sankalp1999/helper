@@ -6,7 +6,7 @@ import { conversationMessages, conversations, mailboxes, platformCustomers } fro
 import { triggerEvent } from "@/jobs/trigger";
 import { postSlackMessage } from "@/lib/slack/client";
 
-const REPORT_HOUR = 11;
+export const REPORT_HOUR = 11;
 export const TIME_ZONE = "America/New_York";
 
 export async function generateDailyReports() {
