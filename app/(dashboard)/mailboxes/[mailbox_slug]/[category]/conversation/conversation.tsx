@@ -72,7 +72,7 @@ export const useConversationSearchStore = create<{
   searchState: SearchState;
   setSearchQuery: (query: string) => void;
   setSearchActive: (active: boolean) => void;
-  setMatches: (matches: { messageId: string; messageIndex: number }[]) => void;
+  setMatches: (matches: { messageId: string; messageIndex: number; matchIndex: number }[]) => void;
   setCurrentMatchIndex: (index: number) => void;
   nextMatch: () => void;
   previousMatch: () => void;
