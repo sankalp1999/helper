@@ -19,14 +19,30 @@ type OrganizationMembersContextType = {
 const OrganizationMembersContext = createContext<OrganizationMembersContextType | null>(null);
 
 export function OrganizationMembersProvider({ children }: { children: ReactNode }) {
-  const { data: members, isLoading, error } = api.organization.getMembers.useQuery(undefined, {
-    staleTime: 5 * 60 * 1000, // 5 minutes instead of Infinity
+  const {
+    data: members,
+    isLoading,
+    error,
+  } = api.organization.getMembers.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   });
 
+  const membersById = useMemo(() => {
+    const map = new Map<string, OrganizationMember>();
+    if (members) {
+      members.forEach((member) => {
+        map.set(member.id, member);
+      });
+    }
+    return map;
+  }, [members]);
+
   return (
-    <OrganizationMembersContext.Provider value={{ members, isLoading }}>{children}</OrganizationMembersContext.Provider>
+    <OrganizationMembersContext.Provider value={{ members, membersById, isLoading, error }}>
+      {children}
+    </OrganizationMembersContext.Provider>
   );
 }
 
