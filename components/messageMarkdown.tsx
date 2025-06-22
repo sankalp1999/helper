@@ -147,7 +147,7 @@ export default function MessageMarkdown({ children, className, components, searc
       const parts = text.split(regex);
 
       return parts.map((part, index) => {
-        if (regex.test(part)) {
+        if (part.toLowerCase() === searchQuery.toLowerCase()) {
           return (
             <mark
               key={index}
