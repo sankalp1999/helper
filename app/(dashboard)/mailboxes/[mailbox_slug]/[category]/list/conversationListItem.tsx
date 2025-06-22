@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatCurrency } from "@/components/utils/currency";
 import { cn } from "@/lib/utils";
-import { api } from "@/trpc/react";
+import { type RouterOutputs } from "@/trpc";
 import { useConversationsListInput } from "../shared/queries";
 import { useConversationListContext } from "./conversationListContext";
 import { highlightKeywords } from "./filters/highlightKeywords";
@@ -22,6 +22,7 @@ type ConversationListItemProps = {
   onSelectConversation: (slug: string) => void;
   isSelected: boolean;
   onToggleSelect: () => void;
+  members: RouterOutputs["organization"]["getMembers"] | undefined;
 };
 
 export const ConversationListItem = ({
@@ -30,6 +31,7 @@ export const ConversationListItem = ({
   onSelectConversation,
   isSelected,
   onToggleSelect,
+  members,
 }: ConversationListItemProps) => {
   const listItemRef = useRef<HTMLAnchorElement>(null);
   const { mailboxSlug } = useConversationListContext();
@@ -118,6 +120,7 @@ export const ConversationListItem = ({
                       className="flex items-center gap-1 text-muted-foreground text-[10px] md:text-xs"
                       assignedToId={conversation.assignedToId}
                       assignedToAI={conversation.assignedToAI}
+                      members={members}
                     />
                   )}
                   <div className="text-muted-foreground text-[10px] md:text-xs">
@@ -157,17 +160,13 @@ const AssignedToLabel = ({
   assignedToId,
   assignedToAI,
   className,
+  members,
 }: {
   assignedToId: string | null;
   assignedToAI?: boolean;
   className?: string;
+  members: RouterOutputs["organization"]["getMembers"] | undefined;
 }) => {
-  const { data: members } = api.organization.getMembers.useQuery(undefined, {
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-  });
-
   if (assignedToAI) {
     return (
       <div className={className} title="Assigned to Helper agent">

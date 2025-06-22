@@ -43,6 +43,12 @@ export const List = () => {
     },
   });
 
+  const { data: members } = api.organization.getMembers.useQuery(undefined, {
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
   const conversations = conversationListData?.conversations ?? [];
   const defaultSort = conversationListData?.defaultSort;
 
@@ -243,6 +249,7 @@ export const List = () => {
               onSelectConversation={navigateToConversation}
               isSelected={allConversationsSelected || selectedConversations.includes(conversation.id)}
               onToggleSelect={() => toggleConversation(conversation.id)}
+              members={members}
             />
           ))}
           <div ref={loadMoreRef} />
