@@ -8,7 +8,7 @@ import { env } from "@/lib/env";
 
 const fullSchema = { ...schema, ...authSchema };
 
-const createDbClient = (url: string, options: PoolConfig = {}) => {
+export const createDbClient = (url: string, options: PoolConfig = {}) => {
   // https://github.com/brianc/node-postgres/issues/2558
   const urlWithoutVerification = url.replace("?sslmode=require", "?sslmode=no-verify");
   const pool = new Pool({ connectionString: urlWithoutVerification, ...options });

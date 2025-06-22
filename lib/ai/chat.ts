@@ -49,7 +49,7 @@ import { captureExceptionAndLogIfDevelopment, captureExceptionAndThrowIfDevelopm
 const SUMMARY_MAX_TOKENS = 7000;
 const SUMMARY_PROMPT =
   "Summarize the following text while preserving all key information and context. Keep the summary under 8000 tokens.";
-const REASONING_MODEL = fireworks("accounts/fireworks/models/deepseek-r1");
+export const REASONING_MODEL = fireworks("accounts/fireworks/models/deepseek-r1");
 
 function hideToolResults<TOOLS extends Record<string, Tool>>(): (options: {
   tools: TOOLS;
