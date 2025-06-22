@@ -64,7 +64,7 @@ export type ConversationWithNewMessages = Omit<ConversationType, "messages"> & {
 export type SearchState = {
   query: string;
   isActive: boolean;
-  matches: { messageId: string; messageIndex: number }[];
+  matches: { messageId: string; messageIndex: number; matchIndex: number }[];
   currentMatchIndex: number;
 };
 
@@ -348,17 +348,34 @@ const ConversationHeader = ({
         return;
       }
 
-      const matches: { messageId: string; messageIndex: number }[] = [];
+      const matches: { messageId: string; messageIndex: number; matchIndex: number }[] = [];
       const searchTerm = query.toLowerCase();
+      const regex = new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
 
-      conversationInfo.messages.forEach((message, index) => {
+      conversationInfo.messages.forEach((message, messageIndex) => {
         if (message.type === "message" || message.type === "note") {
-          const bodyText = message.body?.toLowerCase() || "";
-          const fromText = message.from?.toLowerCase() || "";
+          const bodyText = message.body || "";
+          const fromText = message.from || "";
 
-          if (bodyText.includes(searchTerm) || fromText.includes(searchTerm)) {
-            matches.push({ messageId: message.id.toString(), messageIndex: index });
-          }
+          // Count matches in body text
+          const bodyMatches = Array.from(bodyText.matchAll(regex));
+          bodyMatches.forEach((_, matchIndex) => {
+            matches.push({
+              messageId: message.id.toString(),
+              messageIndex,
+              matchIndex: matches.length,
+            });
+          });
+
+          // Count matches in sender name
+          const fromMatches = Array.from(fromText.matchAll(regex));
+          fromMatches.forEach((_, matchIndex) => {
+            matches.push({
+              messageId: message.id.toString(),
+              messageIndex,
+              matchIndex: matches.length,
+            });
+          });
         }
       });
 
