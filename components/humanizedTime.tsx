@@ -1,5 +1,6 @@
 import { intervalToDuration } from "date-fns";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
+import { useNow } from "./hooks/use-now";
 
 type HumanizedTimeProps = {
   time: string | Date;
@@ -27,8 +28,8 @@ const formatters = {
 
 type Formatter = (typeof formatters)["short" | "long"];
 
-const calculateCurrentTime = (time: Date, formatter: Formatter) => {
-  const duration = intervalToDuration({ start: time, end: new Date() });
+const calculateCurrentTime = (time: Date, now: Date, formatter: Formatter) => {
+  const duration = intervalToDuration({ start: time, end: now });
 
   if (duration.years && duration.years > 0) return formatter.years(duration.years);
   if (duration.months && duration.months > 0) return formatter.months(duration.months);
@@ -41,30 +42,27 @@ const calculateCurrentTime = (time: Date, formatter: Formatter) => {
   return "now";
 };
 
-const HumanizedTime = ({ time, titlePrefix, className, format }: HumanizedTimeProps) => {
-  const date = new Date(time);
-  const formatter = formatters[format ?? "short"];
-  const [currentTime, setCurrentTime] = useState<string>(calculateCurrentTime(date, formatter));
+const HumanizedTime = ({ time, titlePrefix, className, format = "short" }: HumanizedTimeProps) => {
+  const now = useNow();
 
-  const [titleTime, setTitleTime] = useState(date);
+  const date = useMemo(() => new Date(time), [time]);
+  const formatter = useMemo(() => formatters[format], [format]);
 
-  useEffect(() => {
-    setCurrentTime(calculateCurrentTime(date, formatter));
-    setTitleTime(date);
+  const currentTime = useMemo(() => calculateCurrentTime(date, now, formatter), [date, now, formatter]);
 
-    const timer = setInterval(() => setCurrentTime(calculateCurrentTime(date, formatter)), 60000);
-    return () => clearInterval(timer);
-  }, [time]);
-
-  const longDate = titleTime.toLocaleString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+  const longDate = useMemo(
+    () =>
+      date.toLocaleString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
+    [date],
+  );
 
   return (
     <span className={className} title={titlePrefix ? `${titlePrefix} ${longDate}` : longDate}>
