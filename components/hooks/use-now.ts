@@ -1,47 +1,15 @@
-import { useEffect, useState } from "react";
+import { create } from "zustand";
 
-let now = new Date();
-const listeners = new Set<(date: Date) => void>();
-let intervalId: NodeJS.Timeout | null = null;
-
-const startTimer = () => {
-  if (intervalId) return;
-
-  intervalId = setInterval(() => {
-    now = new Date();
-    for (const listener of listeners) {
-      try {
-        listener(now);
-      } catch (error) {
-        console.warn("Error in useNow listener:", error);
-      }
-    }
-  }, 60000);
-};
-
-const stopTimer = () => {
-  if (intervalId) {
-    clearInterval(intervalId);
-    intervalId = null;
-  }
-};
-
-export function useNow() {
-  const [nowValue, setNowValue] = useState(now);
-
-  useEffect(() => {
-    const callback = (newNow: Date) => setNowValue(newNow);
-
-    listeners.add(callback);
-    startTimer();
-
-    return () => {
-      listeners.delete(callback);
-      if (listeners.size === 0) {
-        stopTimer();
-      }
-    };
-  }, []);
-
-  return nowValue;
+interface NowStore {
+  now: Date;
+  updateNow: () => void;
 }
+
+const useNowStore = create<NowStore>((set) => ({
+  now: new Date(),
+  updateNow: () => set({ now: new Date() }),
+}));
+
+setInterval(() => useNowStore.getState().updateNow(), 60_000);
+
+export const useNow = () => useNowStore((state) => state.now);

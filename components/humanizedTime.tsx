@@ -46,23 +46,19 @@ const HumanizedTime = ({ time, titlePrefix, className, format = "short" }: Human
   const now = useNow();
 
   const date = useMemo(() => new Date(time), [time]);
-  const formatter = useMemo(() => formatters[format], [format]);
+  const formatter = formatters[format];
 
-  const currentTime = useMemo(() => calculateCurrentTime(date, now, formatter), [date, now, formatter]);
+  const currentTime = calculateCurrentTime(date, now, formatter);
 
-  const longDate = useMemo(
-    () =>
-      date.toLocaleString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      }),
-    [date],
-  );
+  const longDate = date.toLocaleString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 
   return (
     <span className={className} title={titlePrefix ? `${titlePrefix} ${longDate}` : longDate}>
