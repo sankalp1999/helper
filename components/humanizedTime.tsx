@@ -1,5 +1,4 @@
 import { intervalToDuration } from "date-fns";
-import { useMemo } from "react";
 import { useNow } from "./hooks/use-now";
 
 type HumanizedTimeProps = {
@@ -45,7 +44,7 @@ const calculateCurrentTime = (time: Date, now: Date, formatter: Formatter) => {
 const HumanizedTime = ({ time, titlePrefix, className, format = "short" }: HumanizedTimeProps) => {
   const now = useNow();
 
-  const date = useMemo(() => new Date(time), [time]);
+  const date = new Date(time);
   const formatter = formatters[format];
 
   const currentTime = calculateCurrentTime(date, now, formatter);
