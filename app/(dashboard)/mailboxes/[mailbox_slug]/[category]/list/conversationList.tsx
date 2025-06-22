@@ -1,7 +1,8 @@
 import { Send } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useQueryState } from "nuqs";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useOrganizationMembers } from "@/app/(dashboard)/mailboxes/[mailbox_slug]/organizationMembersContext";
 import { ConversationListItem as ConversationItem } from "@/app/types/global";
 import { toast } from "@/components/hooks/use-toast";
 import LoadingSpinner from "@/components/loadingSpinner";
@@ -43,11 +44,7 @@ export const List = () => {
     },
   });
 
-  const { data: members } = api.organization.getMembers.useQuery(undefined, {
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
-  });
+  const { members } = useOrganizationMembers();
 
   const conversations = conversationListData?.conversations ?? [];
   const defaultSort = conversationListData?.defaultSort;
@@ -55,7 +52,7 @@ export const List = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const resultsContainerRef = useRef<HTMLDivElement>(null);
 
-  const toggleAllConversations = () => {
+  const toggleAllConversations = useCallback(() => {
     if (allConversationsSelected || selectedConversations.length > 0) {
       setAllConversationsSelected(false);
       setSelectedConversations([]);
@@ -63,47 +60,61 @@ export const List = () => {
       setAllConversationsSelected(true);
       setSelectedConversations([]);
     }
-  };
+  }, [allConversationsSelected, selectedConversations.length]);
 
-  const toggleConversation = (id: number) => {
-    if (allConversationsSelected) {
-      setAllConversationsSelected(false);
-      setSelectedConversations(conversations.flatMap((c) => (c.id === id ? [] : [c.id])));
-    } else {
-      setSelectedConversations(
-        selectedConversations.includes(id)
-          ? selectedConversations.filter((selectedId) => selectedId !== id)
-          : [...selectedConversations, id],
-      );
-    }
-  };
+  const toggleConversation = useCallback(
+    (id: number) => {
+      if (allConversationsSelected) {
+        setAllConversationsSelected(false);
+        setSelectedConversations(conversations.flatMap((c) => (c.id === id ? [] : [c.id])));
+      } else {
+        setSelectedConversations(
+          selectedConversations.includes(id)
+            ? selectedConversations.filter((selectedId) => selectedId !== id)
+            : [...selectedConversations, id],
+        );
+      }
+    },
+    [allConversationsSelected, conversations, selectedConversations],
+  );
 
-  const handleBulkUpdate = (status: "closed" | "spam") => {
-    setIsBulkUpdating(true);
-    try {
-      const conversationFilter = allConversationsSelected ? conversations.map((c) => c.id) : selectedConversations;
-      bulkUpdate(
-        {
-          conversationFilter,
-          status,
-          mailboxSlug: input.mailboxSlug,
-        },
-        {
-          onSuccess: ({ updatedImmediately }) => {
-            setAllConversationsSelected(false);
-            setSelectedConversations([]);
-            void utils.mailbox.conversations.list.invalidate();
-            void utils.mailbox.conversations.count.invalidate();
-            if (!updatedImmediately) {
-              toast({ title: "Starting update, refresh to see status." });
-            }
+  const handleBulkUpdate = useCallback(
+    (status: "closed" | "spam") => {
+      setIsBulkUpdating(true);
+      try {
+        const conversationFilter = allConversationsSelected ? conversations.map((c) => c.id) : selectedConversations;
+        bulkUpdate(
+          {
+            conversationFilter,
+            status,
+            mailboxSlug: input.mailboxSlug,
           },
-        },
-      );
-    } finally {
-      setIsBulkUpdating(false);
-    }
-  };
+          {
+            onSuccess: ({ updatedImmediately }) => {
+              setAllConversationsSelected(false);
+              setSelectedConversations([]);
+              void utils.mailbox.conversations.list.invalidate();
+              void utils.mailbox.conversations.count.invalidate();
+              if (!updatedImmediately) {
+                toast({ title: "Starting update, refresh to see status." });
+              }
+            },
+          },
+        );
+      } finally {
+        setIsBulkUpdating(false);
+      }
+    },
+    [
+      allConversationsSelected,
+      conversations,
+      selectedConversations,
+      bulkUpdate,
+      input.mailboxSlug,
+      utils.mailbox.conversations.list,
+      utils.mailbox.conversations.count,
+    ],
+  );
 
   useEffect(() => {
     const currentRef = loadMoreRef.current;
