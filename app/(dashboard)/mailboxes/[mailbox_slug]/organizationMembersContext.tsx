@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { api } from "@/trpc/react";
 
 type OrganizationMember = {
@@ -11,14 +11,16 @@ type OrganizationMember = {
 
 type OrganizationMembersContextType = {
   members: OrganizationMember[] | undefined;
+  membersById: Map<string, OrganizationMember>;
   isLoading: boolean;
+  error: unknown;
 };
 
 const OrganizationMembersContext = createContext<OrganizationMembersContextType | null>(null);
 
 export function OrganizationMembersProvider({ children }: { children: ReactNode }) {
-  const { data: members, isLoading } = api.organization.getMembers.useQuery(undefined, {
-    staleTime: Infinity,
+  const { data: members, isLoading, error } = api.organization.getMembers.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000, // 5 minutes instead of Infinity
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   });
