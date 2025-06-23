@@ -249,7 +249,7 @@ export const MessageActions = () => {
         captureExceptionAndLog(error);
       }
       if (conversation.status === "open" && close) {
-        await updateStatus("closed");
+        updateStatus("closed");
         if (!assign) triggerMailboxConfetti();
       }
       toast({
@@ -279,14 +279,15 @@ export const MessageActions = () => {
                     title: "Message unsent",
                     variant: "success",
                   });
-                  utils.mailbox.conversations.get.invalidate({ mailboxSlug, conversationSlug });
-                  navigateToConversation(conversation.slug);
                 } catch (e) {
                   captureExceptionAndLog(e);
                   toast({
                     variant: "destructive",
                     title: "Failed to unsend email",
                   });
+                } finally {
+                  utils.mailbox.conversations.get.invalidate({ mailboxSlug, conversationSlug });
+                  navigateToConversation(conversation.slug);
                 }
               }}
             >
