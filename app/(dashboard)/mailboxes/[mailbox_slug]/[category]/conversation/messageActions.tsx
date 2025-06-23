@@ -109,9 +109,31 @@ export const MessageActions = () => {
     if (!conversation) return;
 
     if (undoneEmail) {
+      const hasUnsavedChanges = draftedEmail.modified && !isEmptyContent(draftedEmail.message);
+
+      if (hasUnsavedChanges) {
+        const shouldOverwrite = confirm(
+          "You have unsaved changes that will be lost. Do you want to continue with restoring the unsent message?",
+        );
+
+        if (!shouldOverwrite) {
+          setUndoneEmail(undefined);
+          return;
+        }
+      }
+
       setDraftedEmail({ ...undoneEmail, modified: true });
       setInitialMessageObject({ content: undoneEmail.message });
       resetFiles(undoneEmail.files);
+
+      try {
+        if (editorRef.current?.editor && !editorRef.current.editor.isDestroyed) {
+          editorRef.current.editor.commands.setContent(undoneEmail.message);
+        }
+      } catch (error) {
+        captureExceptionAndLog(error);
+      }
+
       setUndoneEmail(undefined);
       return;
     }
@@ -121,7 +143,7 @@ export const MessageActions = () => {
       setDraftedEmail(email);
       setInitialMessageObject({ content: email.message });
     }
-  }, [conversation]);
+  }, [conversation, undoneEmail]);
   useEffect(() => {
     // Updates the drafted email upon draft refreshes
     if (conversation?.draft?.id) {
@@ -209,8 +231,7 @@ export const MessageActions = () => {
         responseToId: lastUserMessage?.id ?? null,
       });
 
-      const originalDraftedEmail = { ...draftedEmail };
-      const originalReadyFiles = [...readyFiles];
+      const originalDraftedEmail = { ...draftedEmail, files: readyFiles };
 
       setDraftedEmail((prev) => ({ ...prev, message: "", files: [], modified: false }));
       setInitialMessageObject({ content: "" });
@@ -242,7 +263,7 @@ export const MessageActions = () => {
                   conversationSlug,
                   emailId,
                 });
-                setUndoneEmail({ ...originalDraftedEmail, files: originalReadyFiles });
+                setUndoneEmail(originalDraftedEmail);
                 toast({
                   title: "Message unsent",
                   variant: "success",
