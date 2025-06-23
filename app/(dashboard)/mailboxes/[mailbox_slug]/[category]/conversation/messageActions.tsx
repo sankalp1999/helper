@@ -119,7 +119,7 @@ export const MessageActions = () => {
       setDraftedEmail(email);
       setInitialMessageObject({ content: email.message });
     }
-  }, [conversation, draftedEmail.modified]);
+  }, [conversation]);
   useEffect(() => {
     // Updates the drafted email upon draft refreshes
     if (conversation?.draft?.id) {
