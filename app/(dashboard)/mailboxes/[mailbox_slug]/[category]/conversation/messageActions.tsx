@@ -205,14 +205,14 @@ export const MessageActions = () => {
 
     setUndoneEmail(undefined);
   }, [
-    undoneEmail, 
-    conversation, 
+    undoneEmail,
+    conversation,
     draftedEmail.modified,
     draftedEmail.message,
-    resetFiles, 
+    resetFiles,
     setUndoneEmail,
     setDraftedEmail,
-    setInitialMessageObject
+    setInitialMessageObject,
   ]);
 
   const handleSend = async ({ assign, close = true }: { assign: boolean; close?: boolean }) => {
@@ -243,11 +243,7 @@ export const MessageActions = () => {
         responseToId: lastUserMessage?.id ?? null,
       });
 
-      if (conversation.status === "open" && close) {
-        await updateStatus("closed");
-        if (!assign) triggerMailboxConfetti();
-      }
-
+      // Clear the draft immediately after message is sent successfully
       setDraftedEmail((prev) => ({ ...prev, message: "", files: [], modified: false }));
       setInitialMessageObject({ content: "" });
       resetFiles([]);
@@ -260,6 +256,26 @@ export const MessageActions = () => {
         }
       } catch (error) {
         captureExceptionAndLog(error);
+      }
+
+      // Handle status update separately - if this fails, draft is already cleared
+      let shouldTriggerConfetti = false;
+      if (conversation.status === "open" && close) {
+        try {
+          await updateStatus("closed");
+          if (!assign) shouldTriggerConfetti = true;
+        } catch (error) {
+          captureExceptionAndLog(error);
+          toast({
+            variant: "destructive",
+            title: "Message sent but failed to close conversation",
+            description: "The message was sent successfully, but there was an error closing the conversation.",
+          });
+        }
+      }
+
+      if (shouldTriggerConfetti) {
+        triggerMailboxConfetti();
       }
       toast({
         title: "Message sent!",
