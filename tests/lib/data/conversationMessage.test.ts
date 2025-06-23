@@ -124,7 +124,8 @@ describe("getMessages", () => {
 
     assert(result[1]?.type === "message");
     expect(result[1].id).toBe(message2.id);
-    expect(result[1].from).toBe(user.user_metadata?.display_name);
+    expect(result[1].from).toBe(null);
+    expect(result[1].userId).toBe(user.id);
 
     assert(result[2]?.type === "note");
     expect(result[2].id).toBe(note.id);
@@ -134,7 +135,7 @@ describe("getMessages", () => {
     expect(result[3].reason).toBe("Sent reply");
   });
 
-  it("handles 'from' field correctly for different message roles", async () => {
+  it("handles 'from' field and userId correctly for different message roles", async () => {
     const { user, mailbox } = await userFactory.createRootUser({
       userOverrides: {
         user_metadata: {
@@ -159,7 +160,8 @@ describe("getMessages", () => {
 
     expect(result).toHaveLength(2);
     expect(result[0].from).toBe("customer@example.com");
-    expect(result[1].from).toBe(user.user_metadata?.display_name);
+    expect(result[1].from).toBe(null);
+    expect(result[1].userId).toBe(user.id);
   });
 
   it("includes files for messages", async () => {

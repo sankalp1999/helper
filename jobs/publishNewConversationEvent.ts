@@ -1,7 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { conversationMessages } from "@/db/schema";
-import { authUsers } from "@/db/supabaseSchema/auth";
 import { serializeMessage } from "@/lib/data/conversationMessage";
 import { createMessageEventPayload } from "@/lib/data/dashboardEvent";
 import { conversationChannelId, conversationsListChannelId, dashboardChannelId } from "@/lib/realtime/channels";
@@ -28,7 +27,7 @@ export const publishNewConversationEvent = async ({ messageId }: { messageId: nu
         message,
         message.conversation.id,
         message.conversation.mailbox,
-        message.userId ? await db.query.authUsers.findFirst({ where: eq(authUsers.id, message.userId) }) : null,
+        null,
       ),
       trim: (data, amount) => ({
         ...data,

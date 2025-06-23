@@ -7,13 +7,29 @@ import { db } from "@/db/client";
 import { authUsers } from "@/db/supabaseSchema/auth";
 import { setupMailboxForNewUser } from "@/lib/auth/authService";
 import { cacheFor } from "@/lib/cache";
+import { getFullName } from "@/lib/auth/authUtils";
 import OtpEmail from "@/lib/emails/otp";
 import { env } from "@/lib/env";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
 import { createAdminClient } from "@/lib/supabase/server";
-import { publicProcedure } from "../trpc";
+import { protectedProcedure, publicProcedure } from "../trpc";
 
 export const userRouter = {
+  getAll: protectedProcedure.query(async () => {
+    const users = await db.query.authUsers.findMany({
+      columns: {
+        id: true,
+        email: true,
+        user_metadata: true,
+      },
+    });
+
+    return users.map((user) => ({
+      id: user.id,
+      email: user.email,
+      displayName: getFullName(user),
+    }));
+  }),
   startSignIn: publicProcedure.input(z.object({ email: z.string() })).mutation(async ({ input }) => {
     const user = await db.query.authUsers.findFirst({
       where: eq(authUsers.email, input.email),

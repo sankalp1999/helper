@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/hooks/use-toast";
+import { useUsers } from "@/components/hooks/use-users";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
@@ -59,8 +60,26 @@ const MessageItem = ({
   const isAIMessage = message.type === "message" && message.role === "ai_assistant";
   const hasReasoning = isAIMessage && hasReasoningMetadata(message.metadata);
   const router = useRouter();
+  const { usersById } = useUsers();
 
   const messageLabels: JSX.Element[] = [];
+  
+  const getDisplayName = () => {
+    if (message.from) return message.from;
+    
+    if (message.role === "staff" && "userId" in message && message.userId) {
+      const user = usersById[message.userId];
+      return user?.displayName || "Unknown User";
+    }
+    
+    if (message.type === "note" && "userId" in message && message.userId) {
+      const user = usersById[message.userId];
+      return user?.displayName || "Unknown User";
+    }
+    
+    return message.role === "user" ? "Anonymous" : "Helper agent";
+  };
+  
   messageLabels.push(
     <span key={`${message.id}-from`} className="flex items-center gap-1">
       {userMessage ? (
@@ -76,7 +95,7 @@ const MessageItem = ({
       ) : (
         <Bot className="h-3 w-3" />
       )}
-      {message.from ? message.from : message.role === "user" ? "Anonymous" : "Helper agent"}
+      {getDisplayName()}
     </span>,
   );
   if (message.type === "message" && message.emailTo)

@@ -12,6 +12,7 @@ import {
 import { useState } from "react";
 import { ConversationEvent } from "@/app/types/global";
 import HumanizedTime from "@/components/humanizedTime";
+import { useUsers } from "@/components/hooks/use-users";
 
 const eventDescriptions = {
   resolved_by_ai: "AI resolution",
@@ -34,15 +35,31 @@ const statusIcons = {
 
 export const EventItem = ({ event }: { event: ConversationEvent }) => {
   const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const { usersById } = useUsers();
+  
   if (!event.changes) return null;
+
+  const getAssignedToName = () => {
+    if (!event.changes?.assignedToId) return null;
+    const user = usersById[event.changes.assignedToId];
+    return user?.displayName || event.changes.assignedToUser || "Unknown User";
+  };
+
+  const getByUserName = () => {
+    if (!event.byUserId) return event.byUser || null;
+    const user = usersById[event.byUserId];
+    return user?.displayName || event.byUser || "Unknown User";
+  };
+
+  const assignedToName = getAssignedToName();
 
   const description = hasEventDescription(event.eventType)
     ? eventDescriptions[event.eventType]
     : [
         event.changes.status ? statusVerbs[event.changes.status] : null,
-        !event.changes.assignedToAI && event.changes.assignedToUser !== undefined
-          ? event.changes.assignedToUser
-            ? `assigned to ${event.changes.assignedToUser}`
+        !event.changes.assignedToAI && (assignedToName !== null || event.changes.assignedToUser !== undefined)
+          ? assignedToName
+            ? `assigned to ${assignedToName}`
             : "unassigned"
           : null,
         event.changes.assignedToAI ? "assigned to Helper agent" : null,
@@ -51,7 +68,8 @@ export const EventItem = ({ event }: { event: ConversationEvent }) => {
         .filter(Boolean)
         .join(" and ");
 
-  const hasDetails = event.byUser || event.reason;
+  const byUserName = getByUserName();
+  const hasDetails = byUserName || event.reason;
   const Icon =
     event.eventType === "resolved_by_ai"
       ? CheckCircle
@@ -79,9 +97,9 @@ export const EventItem = ({ event }: { event: ConversationEvent }) => {
       {hasDetails && detailsExpanded && (
         <div className="mt-2 text-sm text-muted-foreground border rounded p-4">
           <div className="flex flex-col gap-1">
-            {event.byUser && (
+            {byUserName && (
               <div>
-                <strong>By:</strong> {event.byUser}
+                <strong>By:</strong> {byUserName}
               </div>
             )}
             {event.reason && (
