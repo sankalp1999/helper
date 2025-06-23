@@ -256,34 +256,43 @@ export const MessageActions = () => {
         title: "Message sent!",
         variant: "success",
         action: (
-          <ToastAction
-            altText="Undo"
-            onClick={async () => {
-              try {
-                await utils.client.mailbox.conversations.undo.mutate({
-                  mailboxSlug,
-                  conversationSlug,
-                  emailId,
-                });
-                setUndoneEmail(originalDraftedEmail);
-                toast({
-                  title: "Message unsent",
-                  variant: "success",
-                });
-              } catch (e) {
-                captureExceptionAndLog(e);
-                toast({
-                  variant: "destructive",
-                  title: "Failed to unsend email",
-                });
-              } finally {
-                utils.mailbox.conversations.get.invalidate({ mailboxSlug, conversationSlug });
+          <>
+            <ToastAction
+              altText="Visit"
+              onClick={() => {
                 navigateToConversation(conversation.slug);
-              }
-            }}
-          >
-            Undo
-          </ToastAction>
+              }}
+            >
+              Visit
+            </ToastAction>
+            <ToastAction
+              altText="Undo"
+              onClick={async () => {
+                try {
+                  await utils.client.mailbox.conversations.undo.mutate({
+                    mailboxSlug,
+                    conversationSlug,
+                    emailId,
+                  });
+                  setUndoneEmail(originalDraftedEmail);
+                  toast({
+                    title: "Message unsent",
+                    variant: "success",
+                  });
+                  utils.mailbox.conversations.get.invalidate({ mailboxSlug, conversationSlug });
+                  navigateToConversation(conversation.slug);
+                } catch (e) {
+                  captureExceptionAndLog(e);
+                  toast({
+                    variant: "destructive",
+                    title: "Failed to unsend email",
+                  });
+                }
+              }}
+            >
+              Undo
+            </ToastAction>
+          </>
         ),
       });
     } catch (error) {
