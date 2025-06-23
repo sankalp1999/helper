@@ -204,7 +204,7 @@ export const MessageActions = () => {
     }
 
     setUndoneEmail(undefined);
-  }, [undoneEmail, draftedEmail.modified, resetFiles]);
+  }, [undoneEmail, conversation, resetFiles, setUndoneEmail]);
 
   const handleSend = async ({ assign, close = true }: { assign: boolean; close?: boolean }) => {
     if (sendDisabled || !conversation?.slug) return;
@@ -249,7 +249,7 @@ export const MessageActions = () => {
         captureExceptionAndLog(error);
       }
       if (conversation.status === "open" && close) {
-        updateStatus("closed");
+        await updateStatus("closed");
         if (!assign) triggerMailboxConfetti();
       }
       toast({
