@@ -56,6 +56,21 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
 
   const previousStatusRef = useRef(data?.status);
 
+  // Helper to get contextual verb for status changes
+  const getStatusVerb = (status?: "closed" | "spam" | "open") => {
+    switch (status) {
+      case "open":
+        return "reopening";
+      case "closed":
+        return "closing";
+      case "spam":
+        return "marking as spam";
+      case undefined:
+      default:
+        return "updating";
+    }
+  };
+
   const utils = api.useUtils();
   const { mutateAsync: updateConversation, isPending: isUpdating } = api.mailbox.conversations.update.useMutation({
     onMutate: async (variables) => {
@@ -69,13 +84,15 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
         mailboxSlug,
         conversationSlug: variables.conversationSlug,
       });
-      // Optimistically update cache - only merge status if explicitly provided
+      // Optimistically update cache - only merge status if explicitly provided and not undefined
+      // Guard prevents wiping status to undefined when caller does update({subject: "foo"})
+      const hasStatus = Object.prototype.hasOwnProperty.call(variables, "status") && variables.status !== undefined;
       utils.mailbox.conversations.get.setData(
         {
           mailboxSlug,
           conversationSlug: variables.conversationSlug,
         },
-        (old) => (old ? { ...old, ...("status" in variables ? { status: variables.status } : {}) } : old),
+        (old) => (old ? { ...old, ...(hasStatus ? { status: variables.status } : {}) } : old),
       );
       return { previousData };
     },
@@ -92,18 +109,9 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
       }
 
       // Show error toast with contextual action description
-      const action =
-        variables.status === "open"
-          ? "reopening"
-          : variables.status === "closed"
-            ? "closing"
-            : variables.status === "spam"
-              ? "marking as spam"
-              : "updating";
-
       toast({
         variant: "destructive",
-        title: `Error ${action} conversation`,
+        title: `Error ${getStatusVerb(variables.status)} conversation`,
         description: error.message,
       });
     },
@@ -131,54 +139,52 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
     async (status: "closed" | "spam" | "open") => {
       const previousStatus = previousStatusRef.current;
 
-      try {
-        await update({ status });
+      await update({ status });
 
-        if (status === "open") {
-          removeConversationKeepActive();
+      if (status === "open") {
+        removeConversationKeepActive();
+        toast({
+          title: "Conversation reopened",
+          variant: "success",
+        });
+      } else {
+        removeConversation();
+        if (status === "closed") {
           toast({
-            title: "Conversation reopened",
+            title: "Conversation closed",
             variant: "success",
           });
-        } else {
-          removeConversation();
-          if (status === "closed") {
-            toast({
-              title: "Conversation closed",
-              variant: "success",
-            });
-          }
         }
+      }
 
-        if (status === "spam") {
-          toast({
-            title: "Marked as spam",
-            action: (
-              <ToastAction
-                altText="Undo"
-                onClick={async () => {
-                  try {
-                    await update({ status: previousStatus ?? "open" });
-                    navigateToConversation(conversationSlug);
-                    toast({
-                      title: "No longer marked as spam",
-                    });
-                  } catch (e) {
-                    captureExceptionAndThrowIfDevelopment(e);
-                    toast({
-                      variant: "destructive",
-                      title: "Failed to undo",
-                    });
-                  }
-                }}
-              >
-                Undo
-              </ToastAction>
-            ),
-          });
-        }
-      } catch (error) {
-        captureExceptionAndThrowIfDevelopment(error);
+      if (status === "spam") {
+        // Capture previous status now to avoid race conditions
+        const undoStatus = previousStatus ?? "open";
+        toast({
+          title: "Marked as spam",
+          action: (
+            <ToastAction
+              altText="Undo"
+              onClick={async () => {
+                try {
+                  await update({ status: undoStatus });
+                  navigateToConversation(conversationSlug);
+                  toast({
+                    title: "No longer marked as spam",
+                  });
+                } catch (e) {
+                  captureExceptionAndThrowIfDevelopment(e);
+                  toast({
+                    variant: "destructive",
+                    title: "Failed to undo",
+                  });
+                }
+              }}
+            >
+              Undo
+            </ToastAction>
+          ),
+        });
       }
     },
     [update, removeConversation, removeConversationKeepActive, navigateToConversation, conversationSlug],
