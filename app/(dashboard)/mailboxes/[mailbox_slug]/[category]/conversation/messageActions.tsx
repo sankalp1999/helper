@@ -213,7 +213,14 @@ export const MessageActions = () => {
       resetFiles([]);
       setStoredMessage("");
       setShowCommandBar(false);
-      editorRef.current?.editor?.commands.clearContent();
+
+      try {
+        if (editorRef.current?.editor && !editorRef.current.editor.isDestroyed) {
+          editorRef.current.editor.commands.clearContent();
+        }
+      } catch (error) {
+        captureExceptionAndLog(error);
+      }
       if (conversation.status === "open" && close) {
         updateStatus("closed");
         if (!assign) triggerMailboxConfetti();
