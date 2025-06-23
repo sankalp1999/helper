@@ -204,16 +204,7 @@ export const MessageActions = () => {
     }
 
     setUndoneEmail(undefined);
-  }, [
-    undoneEmail,
-    conversation,
-    draftedEmail.modified,
-    draftedEmail.message,
-    resetFiles,
-    setUndoneEmail,
-    setDraftedEmail,
-    setInitialMessageObject,
-  ]);
+  }, [undoneEmail, conversation]);
 
   const handleSend = async ({ assign, close = true }: { assign: boolean; close?: boolean }) => {
     if (sendDisabled || !conversation?.slug) return;
