@@ -35,12 +35,17 @@ export const isEmptyContent = (text: string | undefined) => {
   return !dom.documentElement.textContent && !dom.querySelector('img[src]:not([src=""])');
 };
 
-export const useSendDisabled = (message: string | undefined) => {
+export const useSendDisabled = (message: string | undefined, conversationStatus?: string | null) => {
   const [sending, setSending] = useState(false);
   const { uploading, failedAttachmentsExist, hasReadyFileAttachments } = useFileUpload();
 
   const sendDisabled =
-    sending || (isEmptyContent(message) && !hasReadyFileAttachments) || uploading || failedAttachmentsExist;
+    sending ||
+    (isEmptyContent(message) && !hasReadyFileAttachments) ||
+    uploading ||
+    failedAttachmentsExist ||
+    conversationStatus === "closed" ||
+    conversationStatus === "spam";
   return { sendDisabled, sending, setSending };
 };
 
@@ -173,7 +178,7 @@ export const MessageActions = () => {
   });
 
   const { readyFiles, resetFiles } = useFileUpload();
-  const { sendDisabled, sending, setSending } = useSendDisabled(draftedEmail.message);
+  const { sendDisabled, sending, setSending } = useSendDisabled(draftedEmail.message, conversation?.status);
 
   useEffect(() => {
     if (!conversation || !undoneEmail) return;
@@ -415,8 +420,8 @@ export const MessageActions = () => {
         defaultContent={initialMessageObject}
         editable={true}
         onUpdate={(message, isEmpty) => updateDraftedEmail({ message: isEmpty ? "" : message })}
-        onModEnter={() => handleSend({ assign: false })}
-        onOptionEnter={() => handleSend({ assign: false, close: false })}
+        onModEnter={() => !sendDisabled && handleSend({ assign: false })}
+        onOptionEnter={() => !sendDisabled && handleSend({ assign: false, close: false })}
         onSlashKey={() => commandInputRef.current?.focus()}
         enableImageUpload
         enableFileUpload
