@@ -288,44 +288,34 @@ export const MessageActions = () => {
             Visit
           </ToastAction>
         ) : (
-          <>
-            <ToastAction
-              altText="Visit"
-              onClick={() => {
+          <ToastAction
+            altText="Undo"
+            onClick={async () => {
+              try {
+                await utils.client.mailbox.conversations.undo.mutate({
+                  mailboxSlug,
+                  conversationSlug,
+                  emailId,
+                });
+                setUndoneEmail(originalDraftedEmail);
+                toast({
+                  title: "Message unsent",
+                  variant: "success",
+                });
+              } catch (e) {
+                captureExceptionAndLog(e);
+                toast({
+                  variant: "destructive",
+                  title: "Failed to unsend email",
+                });
+              } finally {
+                utils.mailbox.conversations.get.invalidate({ mailboxSlug, conversationSlug });
                 navigateToConversation(conversation.slug);
-              }}
-            >
-              Visit
-            </ToastAction>
-            <ToastAction
-              altText="Undo"
-              onClick={async () => {
-                try {
-                  await utils.client.mailbox.conversations.undo.mutate({
-                    mailboxSlug,
-                    conversationSlug,
-                    emailId,
-                  });
-                  setUndoneEmail(originalDraftedEmail);
-                  toast({
-                    title: "Message unsent",
-                    variant: "success",
-                  });
-                } catch (e) {
-                  captureExceptionAndLog(e);
-                  toast({
-                    variant: "destructive",
-                    title: "Failed to unsend email",
-                  });
-                } finally {
-                  utils.mailbox.conversations.get.invalidate({ mailboxSlug, conversationSlug });
-                  navigateToConversation(conversation.slug);
-                }
-              }}
-            >
-              Undo
-            </ToastAction>
-          </>
+              }
+            }}
+          >
+            Undo
+          </ToastAction>
         ),
       });
     } catch (error) {
