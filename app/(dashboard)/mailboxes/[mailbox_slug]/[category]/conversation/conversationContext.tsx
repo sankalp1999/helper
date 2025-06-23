@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useRef } from "react";
+import { createContext, useCallback, useContext } from "react";
 import { useConversationListContext } from "@/app/(dashboard)/mailboxes/[mailbox_slug]/[category]/list/conversationListContext";
 import { toast } from "@/components/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
@@ -54,40 +54,27 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
     refetch,
   } = assertDefined(useConversationQuery(mailboxSlug, currentConversationSlug));
 
-  const previousStatusRef = useRef<"closed" | "spam" | "open" | undefined>(data?.status);
-
   const utils = api.useUtils();
   const { mutateAsync: updateConversation, isPending: isUpdating } = api.mailbox.conversations.update.useMutation({
-    onMutate: async (variables) => {
-      // Cancel outgoing queries to prevent race conditions
-      await utils.mailbox.conversations.get.cancel({
-        mailboxSlug,
-        conversationSlug: variables.conversationSlug,
-      });
-      // Snapshot current data for rollback on error
+    onMutate: (variables) => {
       const previousData = utils.mailbox.conversations.get.getData({
         mailboxSlug,
         conversationSlug: variables.conversationSlug,
       });
-      // Capture previous status here instead of using ref to avoid race conditions
-      const previousStatus = previousData?.status;
-      if (previousStatus) {
-        previousStatusRef.current = previousStatus;
+
+      if (previousData && variables.status) {
+        utils.mailbox.conversations.get.setData(
+          {
+            mailboxSlug,
+            conversationSlug: variables.conversationSlug,
+          },
+          { ...previousData, status: variables.status },
+        );
       }
-      // Optimistically update cache - only merge status if explicitly provided and not undefined
-      // Guard prevents wiping status to undefined when caller does update({subject: "foo"})
-      const hasStatus = Object.prototype.hasOwnProperty.call(variables, "status") && variables.status !== undefined;
-      utils.mailbox.conversations.get.setData(
-        {
-          mailboxSlug,
-          conversationSlug: variables.conversationSlug,
-        },
-        (old) => (old ? { ...old, ...(hasStatus ? { status: variables.status } : {}) } : old),
-      );
-      return { previousData, previousStatus };
+
+      return { previousData };
     },
     onError: (error, variables, context) => {
-      // Rollback optimistic update on error
       if (context?.previousData) {
         utils.mailbox.conversations.get.setData(
           {
@@ -98,15 +85,13 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
         );
       }
 
-      // Show error toast with contextual action description
       toast({
         variant: "destructive",
         title: "Error updating conversation",
         description: error.message,
       });
     },
-    onSettled: (_, __, variables) => {
-      // Refetch to ensure consistency regardless of success/error
+    onSuccess: (data, variables) => {
       utils.mailbox.conversations.get.invalidate({
         mailboxSlug,
         conversationSlug: variables.conversationSlug,
@@ -120,7 +105,7 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
 
   const updateStatus = useCallback(
     async (status: "closed" | "spam" | "open") => {
-      const previousStatus = previousStatusRef.current;
+      const previousStatus = data?.status;
 
       await update({ status });
 
@@ -141,7 +126,6 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
       }
 
       if (status === "spam") {
-        // Capture previous status now to avoid race conditions
         const undoStatus = previousStatus ?? "open";
         toast({
           title: "Marked as spam",
@@ -170,7 +154,7 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
         });
       }
     },
-    [update, removeConversation, removeConversationKeepActive, navigateToConversation, conversationSlug],
+    [update, removeConversation, removeConversationKeepActive, navigateToConversation, conversationSlug, data],
   );
 
   return (
