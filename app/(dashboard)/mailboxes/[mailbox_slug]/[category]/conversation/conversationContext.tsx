@@ -56,21 +56,6 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
 
   const previousStatusRef = useRef<"closed" | "spam" | "open" | undefined>(data?.status);
 
-  // Helper to get contextual verb for status changes
-  const getStatusVerb = (status?: "closed" | "spam" | "open") => {
-    switch (status) {
-      case "open":
-        return "reopening";
-      case "closed":
-        return "closing";
-      case "spam":
-        return "marking as spam";
-      case undefined:
-      default:
-        return "updating";
-    }
-  };
-
   const utils = api.useUtils();
   const { mutateAsync: updateConversation, isPending: isUpdating } = api.mailbox.conversations.update.useMutation({
     onMutate: async (variables) => {
@@ -116,7 +101,7 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
       // Show error toast with contextual action description
       toast({
         variant: "destructive",
-        title: `Error ${getStatusVerb(variables.status)} conversation`,
+        title: "Error updating conversation",
         description: error.message,
       });
     },
