@@ -105,45 +105,16 @@ export const MessageActions = () => {
   );
   const [initialMessageObject, setInitialMessageObject] = useState({ content: "" });
   const { undoneEmail, setUndoneEmail } = useUndoneEmailStore();
+
   useEffect(() => {
     if (!conversation) return;
-
-    if (undoneEmail) {
-      const hasUnsavedChanges = draftedEmail.modified && !isEmptyContent(draftedEmail.message);
-
-      if (hasUnsavedChanges) {
-        const shouldOverwrite = confirm(
-          "You have unsaved changes that will be lost. Do you want to continue with restoring the unsent message?",
-        );
-
-        if (!shouldOverwrite) {
-          setUndoneEmail(undefined);
-          return;
-        }
-      }
-
-      setDraftedEmail({ ...undoneEmail, modified: true });
-      setInitialMessageObject({ content: undoneEmail.message });
-      resetFiles(undoneEmail.files);
-
-      try {
-        if (editorRef.current?.editor && !editorRef.current.editor.isDestroyed) {
-          editorRef.current.editor.commands.setContent(undoneEmail.message);
-        }
-      } catch (error) {
-        captureExceptionAndLog(error);
-      }
-
-      setUndoneEmail(undefined);
-      return;
-    }
 
     if (!draftedEmail.modified) {
       const email = generateInitialDraftedEmail(conversation);
       setDraftedEmail(email);
       setInitialMessageObject({ content: email.message });
     }
-  }, [conversation, undoneEmail]);
+  }, [conversation, draftedEmail.modified]);
   useEffect(() => {
     // Updates the drafted email upon draft refreshes
     if (conversation?.draft?.id) {
@@ -203,6 +174,37 @@ export const MessageActions = () => {
 
   const { readyFiles, resetFiles } = useFileUpload();
   const { sendDisabled, sending, setSending } = useSendDisabled(draftedEmail.message);
+
+  useEffect(() => {
+    if (!conversation || !undoneEmail) return;
+
+    const hasUnsavedChanges = draftedEmail.modified && !isEmptyContent(draftedEmail.message);
+
+    if (hasUnsavedChanges) {
+      const shouldOverwrite = confirm(
+        "You have unsaved changes that will be lost. Do you want to continue with restoring the unsent message?",
+      );
+
+      if (!shouldOverwrite) {
+        setUndoneEmail(undefined);
+        return;
+      }
+    }
+
+    setDraftedEmail({ ...undoneEmail, modified: true });
+    setInitialMessageObject({ content: undoneEmail.message });
+    resetFiles(undoneEmail.files);
+
+    try {
+      if (editorRef.current?.editor && !editorRef.current.editor.isDestroyed) {
+        editorRef.current.editor.commands.setContent(undoneEmail.message);
+      }
+    } catch (error) {
+      captureExceptionAndLog(error);
+    }
+
+    setUndoneEmail(undefined);
+  }, [undoneEmail, draftedEmail.modified, resetFiles]);
 
   const handleSend = async ({ assign, close = true }: { assign: boolean; close?: boolean }) => {
     if (sendDisabled || !conversation?.slug) return;

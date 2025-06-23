@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useRef } from "react";
+import { createContext, useCallback, useContext, useRef } from "react";
 import { useConversationListContext } from "@/app/(dashboard)/mailboxes/[mailbox_slug]/[category]/list/conversationListContext";
 import { toast } from "@/components/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
@@ -54,7 +54,7 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
     refetch,
   } = assertDefined(useConversationQuery(mailboxSlug, currentConversationSlug));
 
-  const previousStatusRef = useRef(data?.status);
+  const previousStatusRef = useRef<"closed" | "spam" | "open" | undefined>(data?.status);
 
   // Helper to get contextual verb for status changes
   const getStatusVerb = (status?: "closed" | "spam" | "open") => {
@@ -84,6 +84,11 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
         mailboxSlug,
         conversationSlug: variables.conversationSlug,
       });
+      // Capture previous status here instead of using ref to avoid race conditions
+      const previousStatus = previousData?.status;
+      if (previousStatus) {
+        previousStatusRef.current = previousStatus;
+      }
       // Optimistically update cache - only merge status if explicitly provided and not undefined
       // Guard prevents wiping status to undefined when caller does update({subject: "foo"})
       const hasStatus = Object.prototype.hasOwnProperty.call(variables, "status") && variables.status !== undefined;
@@ -94,7 +99,7 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
         },
         (old) => (old ? { ...old, ...(hasStatus ? { status: variables.status } : {}) } : old),
       );
-      return { previousData };
+      return { previousData, previousStatus };
     },
     onError: (error, variables, context) => {
       // Rollback optimistic update on error
@@ -123,13 +128,6 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
       });
     },
   });
-
-  // Only update ref when mutation is idle to preserve correct previous status for undo
-  useEffect(() => {
-    if (!isUpdating) {
-      previousStatusRef.current = data?.status;
-    }
-  }, [isUpdating, data?.status]);
 
   const update = async (inputs: Partial<RouterInputs["mailbox"]["conversations"]["update"]>) => {
     await updateConversation({ mailboxSlug, conversationSlug, ...inputs });
