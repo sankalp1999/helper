@@ -118,9 +118,33 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
       } else {
         removeConversation();
         if (status === "closed") {
+          const undoStatus = previousStatus ?? "open";
           toast({
             title: "Conversation closed",
             variant: "success",
+            action: (
+              <ToastAction
+                altText="Undo"
+                onClick={async () => {
+                  try {
+                    await update({ status: undoStatus });
+                    navigateToConversation(conversationSlug);
+                    toast({
+                      title: "Conversation reopened",
+                      variant: "success",
+                    });
+                  } catch (e) {
+                    captureExceptionAndThrowIfDevelopment(e);
+                    toast({
+                      variant: "destructive",
+                      title: "Failed to undo",
+                    });
+                  }
+                }}
+              >
+                Undo
+              </ToastAction>
+            ),
           });
         }
       }
