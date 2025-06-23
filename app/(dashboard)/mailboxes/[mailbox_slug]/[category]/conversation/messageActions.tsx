@@ -204,13 +204,23 @@ export const MessageActions = () => {
     }
 
     setUndoneEmail(undefined);
-  }, [undoneEmail, conversation, resetFiles, setUndoneEmail]);
+  }, [
+    undoneEmail, 
+    conversation, 
+    draftedEmail.modified,
+    draftedEmail.message,
+    resetFiles, 
+    setUndoneEmail,
+    setDraftedEmail,
+    setInitialMessageObject
+  ]);
 
   const handleSend = async ({ assign, close = true }: { assign: boolean; close?: boolean }) => {
     if (sendDisabled || !conversation?.slug) return;
 
     stopRecording();
     setSending(true);
+    const originalDraftedEmail = { ...draftedEmail, files: readyFiles };
 
     try {
       const cc_emails = draftedEmail.cc.replace(/\s/g, "").split(",");
@@ -233,7 +243,10 @@ export const MessageActions = () => {
         responseToId: lastUserMessage?.id ?? null,
       });
 
-      const originalDraftedEmail = { ...draftedEmail, files: readyFiles };
+      if (conversation.status === "open" && close) {
+        await updateStatus("closed");
+        if (!assign) triggerMailboxConfetti();
+      }
 
       setDraftedEmail((prev) => ({ ...prev, message: "", files: [], modified: false }));
       setInitialMessageObject({ content: "" });
@@ -247,10 +260,6 @@ export const MessageActions = () => {
         }
       } catch (error) {
         captureExceptionAndLog(error);
-      }
-      if (conversation.status === "open" && close) {
-        updateStatus("closed");
-        if (!assign) triggerMailboxConfetti();
       }
       toast({
         title: "Message sent!",
