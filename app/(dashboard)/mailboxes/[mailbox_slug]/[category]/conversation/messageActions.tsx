@@ -208,6 +208,10 @@ export const MessageActions = () => {
         shouldClose: close,
         responseToId: lastUserMessage?.id ?? null,
       });
+
+      const originalDraftedEmail = { ...draftedEmail };
+      const originalReadyFiles = [...readyFiles];
+
       setDraftedEmail((prev) => ({ ...prev, message: "", files: [], modified: false }));
       setInitialMessageObject({ content: "" });
       resetFiles([]);
@@ -238,7 +242,7 @@ export const MessageActions = () => {
                   conversationSlug,
                   emailId,
                 });
-                setUndoneEmail({ ...draftedEmail, files: readyFiles });
+                setUndoneEmail({ ...originalDraftedEmail, files: originalReadyFiles });
                 toast({
                   title: "Message unsent",
                   variant: "success",
