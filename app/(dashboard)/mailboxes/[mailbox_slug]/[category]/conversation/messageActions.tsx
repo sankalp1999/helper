@@ -208,11 +208,10 @@ export const MessageActions = () => {
         shouldClose: close,
         responseToId: lastUserMessage?.id ?? null,
       });
-      setDraftedEmail({ message: "", files: [], cc: "", bcc: "", modified: false });
+      setDraftedEmail((prev) => ({ ...prev, message: "", files: [], modified: false }));
       setInitialMessageObject({ content: "" });
       resetFiles([]);
       setStoredMessage("");
-      setShowCc(false);
       setShowCommandBar(false);
       editorRef.current?.editor?.commands.clearContent();
       if (conversation.status === "open" && close) {
