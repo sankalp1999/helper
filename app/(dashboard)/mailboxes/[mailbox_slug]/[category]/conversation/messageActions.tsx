@@ -45,7 +45,7 @@ export const useSendDisabled = (message: string | undefined) => {
 };
 
 export const MessageActions = () => {
-  const { navigateToConversation } = useConversationListContext();
+  const { navigateToConversation, removeConversation } = useConversationListContext();
   const { data: conversation, mailboxSlug, refetch, updateStatus } = useConversationContext();
   const { searchParams } = useConversationsListInput();
   const utils = api.useUtils();
@@ -253,7 +253,14 @@ export const MessageActions = () => {
       let shouldTriggerConfetti = false;
       if (conversation.status === "open" && close) {
         try {
-          await updateStatus("closed");
+          // Use direct update to avoid redundant toast since we're already showing "Replied and closed"
+          await utils.client.mailbox.conversations.update.mutate({
+            mailboxSlug,
+            conversationSlug,
+            status: "closed",
+          });
+          // Remove conversation from list and move to next
+          removeConversation();
           if (!assign) shouldTriggerConfetti = true;
         } catch (error) {
           captureExceptionAndLog(error);
@@ -269,9 +276,18 @@ export const MessageActions = () => {
         triggerMailboxConfetti();
       }
       toast({
-        title: "Message sent!",
+        title: close ? "Replied and closed" : "Message sent!",
         variant: "success",
-        action: (
+        action: close ? (
+          <ToastAction
+            altText="Visit"
+            onClick={() => {
+              navigateToConversation(conversation.slug);
+            }}
+          >
+            Visit
+          </ToastAction>
+        ) : (
           <>
             <ToastAction
               altText="Visit"
