@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef } from "react";
 import { useConversationListContext } from "@/app/(dashboard)/mailboxes/[mailbox_slug]/[category]/list/conversationListContext";
 import { toast } from "@/components/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
@@ -14,8 +14,9 @@ type ConversationContextType = {
   isPending: boolean;
   error: { message: string } | null;
   refetch: () => void;
-  updateStatus: (status: "closed" | "spam" | "open") => void;
-  updateConversation: (inputs: Partial<RouterInputs["mailbox"]["conversations"]["update"]>) => void;
+  updateStatus: (status: "closed" | "spam" | "open") => Promise<void>;
+  updateConversation: (inputs: Partial<RouterInputs["mailbox"]["conversations"]["update"]>) => Promise<void>;
+  isUpdating: boolean;
 };
 
 const ConversationContext = createContext<ConversationContextType | null>(null);
@@ -53,80 +54,134 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
     refetch,
   } = assertDefined(useConversationQuery(mailboxSlug, currentConversationSlug));
 
+  const previousStatusRef = useRef(data?.status);
+
   const utils = api.useUtils();
-  const { mutate: updateConversation } = api.mailbox.conversations.update.useMutation({
-    onSuccess: async (_, variables) => {
-      // Auto-invalidate the conversation to refresh the data
-      await utils.mailbox.conversations.get.invalidate({
+  const { mutateAsync: updateConversation, isPending: isUpdating } = api.mailbox.conversations.update.useMutation({
+    onMutate: async (variables) => {
+      // Cancel outgoing queries to prevent race conditions
+      await utils.mailbox.conversations.get.cancel({
         mailboxSlug,
         conversationSlug: variables.conversationSlug,
       });
+      // Snapshot current data for rollback on error
+      const previousData = utils.mailbox.conversations.get.getData({
+        mailboxSlug,
+        conversationSlug: variables.conversationSlug,
+      });
+      // Optimistically update cache - only merge status if explicitly provided
+      utils.mailbox.conversations.get.setData(
+        {
+          mailboxSlug,
+          conversationSlug: variables.conversationSlug,
+        },
+        (old) => (old ? { ...old, ...("status" in variables ? { status: variables.status } : {}) } : old),
+      );
+      return { previousData };
     },
-    onError: (error, variables) => {
-      const action = variables.status === "open" ? "reopening" : 
-                   variables.status === "closed" ? "closing" : 
-                   variables.status === "spam" ? "marking as spam" : "updating";
-      
+    onError: (error, variables, context) => {
+      // Rollback optimistic update on error
+      if (context?.previousData) {
+        utils.mailbox.conversations.get.setData(
+          {
+            mailboxSlug,
+            conversationSlug: variables.conversationSlug,
+          },
+          context.previousData,
+        );
+      }
+
+      // Show error toast with contextual action description
+      const action =
+        variables.status === "open"
+          ? "reopening"
+          : variables.status === "closed"
+            ? "closing"
+            : variables.status === "spam"
+              ? "marking as spam"
+              : "updating";
+
       toast({
         variant: "destructive",
         title: `Error ${action} conversation`,
         description: error.message,
       });
     },
+    onSettled: (_, __, variables) => {
+      // Refetch to ensure consistency regardless of success/error
+      utils.mailbox.conversations.get.invalidate({
+        mailboxSlug,
+        conversationSlug: variables.conversationSlug,
+      });
+    },
   });
-  const update = (inputs: Partial<RouterInputs["mailbox"]["conversations"]["update"]>) =>
-    updateConversation({ mailboxSlug, conversationSlug, ...inputs });
+
+  // Only update ref when mutation is idle to preserve correct previous status for undo
+  useEffect(() => {
+    if (!isUpdating) {
+      previousStatusRef.current = data?.status;
+    }
+  }, [isUpdating, data?.status]);
+
+  const update = async (inputs: Partial<RouterInputs["mailbox"]["conversations"]["update"]>) => {
+    await updateConversation({ mailboxSlug, conversationSlug, ...inputs });
+  };
 
   const updateStatus = useCallback(
-    (status: "closed" | "spam" | "open") => {
-      const previousStatus = data?.status;
-      update({ status });
-      
-      if (status === "open") {
-        removeConversationKeepActive();
-        toast({
-          title: "Conversation reopened",
-          variant: "success",
-        });
-      } else {
-        removeConversation();
-        if (status === "closed") {
+    async (status: "closed" | "spam" | "open") => {
+      const previousStatus = previousStatusRef.current;
+
+      try {
+        await update({ status });
+
+        if (status === "open") {
+          removeConversationKeepActive();
           toast({
-            title: "Conversation closed",
+            title: "Conversation reopened",
             variant: "success",
           });
+        } else {
+          removeConversation();
+          if (status === "closed") {
+            toast({
+              title: "Conversation closed",
+              variant: "success",
+            });
+          }
         }
-      }
-      
-      if (status === "spam") {
-        toast({
-          title: "Marked as spam",
-          action: (
-            <ToastAction
-              altText="Undo"
-              onClick={() => {
-                try {
-                  update({ status: previousStatus ?? "open" });
-                  navigateToConversation(conversationSlug);
-                  toast({
-                    title: "No longer marked as spam",
-                  });
-                } catch (e) {
-                  captureExceptionAndThrowIfDevelopment(e);
-                  toast({
-                    variant: "destructive",
-                    title: "Failed to undo",
-                  });
-                }
-              }}
-            >
-              Undo
-            </ToastAction>
-          ),
-        });
+
+        if (status === "spam") {
+          toast({
+            title: "Marked as spam",
+            action: (
+              <ToastAction
+                altText="Undo"
+                onClick={async () => {
+                  try {
+                    await update({ status: previousStatus ?? "open" });
+                    navigateToConversation(conversationSlug);
+                    toast({
+                      title: "No longer marked as spam",
+                    });
+                  } catch (e) {
+                    captureExceptionAndThrowIfDevelopment(e);
+                    toast({
+                      variant: "destructive",
+                      title: "Failed to undo",
+                    });
+                  }
+                }}
+              >
+                Undo
+              </ToastAction>
+            ),
+          });
+        }
+      } catch (error) {
+        captureExceptionAndThrowIfDevelopment(error);
       }
     },
-    [data, removeConversation, removeConversationKeepActive, navigateToConversation, conversationSlug, update],
+    [update, removeConversation, removeConversationKeepActive, navigateToConversation, conversationSlug],
   );
 
   return (
@@ -140,6 +195,7 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
         refetch,
         updateStatus,
         updateConversation: update,
+        isUpdating,
       }}
     >
       {children}
