@@ -60,6 +60,15 @@ export const MessageActions = () => {
     triggerConfetti();
   };
 
+  const replyMutation = api.mailbox.conversations.messages.reply.useMutation({
+    onSuccess: async (_, variables) => {
+      await utils.mailbox.conversations.get.invalidate({
+        mailboxSlug,
+        conversationSlug: variables.conversationSlug,
+      });
+    },
+  });
+
   useKeyboardShortcut("z", () => {
     if (conversation?.status === "closed" || conversation?.status === "spam") {
       updateStatus("open");
@@ -188,7 +197,7 @@ export const MessageActions = () => {
         ?.filter((m) => m.type === "message" && m.role === "user")
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
 
-      const { id: emailId } = await utils.client.mailbox.conversations.messages.reply.mutate({
+      const { id: emailId } = await replyMutation.mutateAsync({
         mailboxSlug,
         conversationSlug,
         message: draftedEmail.message,
@@ -203,6 +212,9 @@ export const MessageActions = () => {
       setInitialMessageObject({ content: "" });
       resetFiles([]);
       setStoredMessage("");
+      setShowCc(false);
+      setShowCommandBar(false);
+      editorRef.current?.editor?.commands.clearContent();
       if (conversation.status === "open" && close) {
         updateStatus("closed");
         if (!assign) triggerMailboxConfetti();
@@ -211,45 +223,34 @@ export const MessageActions = () => {
         title: "Message sent!",
         variant: "success",
         action: (
-          <>
-            <ToastAction
-              altText="Visit"
-              onClick={() => {
+          <ToastAction
+            altText="Undo"
+            onClick={async () => {
+              try {
+                await utils.client.mailbox.conversations.undo.mutate({
+                  mailboxSlug,
+                  conversationSlug,
+                  emailId,
+                });
+                setUndoneEmail({ ...draftedEmail, files: readyFiles });
+                toast({
+                  title: "Message unsent",
+                  variant: "success",
+                });
+              } catch (e) {
+                captureExceptionAndLog(e);
+                toast({
+                  variant: "destructive",
+                  title: "Failed to unsend email",
+                });
+              } finally {
                 utils.mailbox.conversations.get.invalidate({ mailboxSlug, conversationSlug });
                 navigateToConversation(conversation.slug);
-              }}
-            >
-              Visit
-            </ToastAction>
-            <ToastAction
-              altText="Undo"
-              onClick={async () => {
-                try {
-                  await utils.client.mailbox.conversations.undo.mutate({
-                    mailboxSlug,
-                    conversationSlug,
-                    emailId,
-                  });
-                  setUndoneEmail({ ...draftedEmail, files: readyFiles });
-                  toast({
-                    title: "Message unsent",
-                    variant: "success",
-                  });
-                } catch (e) {
-                  captureExceptionAndLog(e);
-                  toast({
-                    variant: "destructive",
-                    title: "Failed to unsend email",
-                  });
-                } finally {
-                  utils.mailbox.conversations.get.invalidate({ mailboxSlug, conversationSlug });
-                  navigateToConversation(conversation.slug);
-                }
-              }}
-            >
-              Undo
-            </ToastAction>
-          </>
+              }
+            }}
+          >
+            Undo
+          </ToastAction>
         ),
       });
     } catch (error) {
@@ -260,10 +261,6 @@ export const MessageActions = () => {
       });
     } finally {
       setSending(false);
-    }
-
-    if (conversation?.status !== "open") {
-      refetch();
     }
   };
 

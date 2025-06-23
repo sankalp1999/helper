@@ -53,56 +53,80 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
     refetch,
   } = assertDefined(useConversationQuery(mailboxSlug, currentConversationSlug));
 
-  const { mutate: updateConversation } = api.mailbox.conversations.update.useMutation();
+  const utils = api.useUtils();
+  const { mutate: updateConversation } = api.mailbox.conversations.update.useMutation({
+    onSuccess: async (_, variables) => {
+      // Auto-invalidate the conversation to refresh the data
+      await utils.mailbox.conversations.get.invalidate({
+        mailboxSlug,
+        conversationSlug: variables.conversationSlug,
+      });
+    },
+    onError: (error, variables) => {
+      const action = variables.status === "open" ? "reopening" : 
+                   variables.status === "closed" ? "closing" : 
+                   variables.status === "spam" ? "marking as spam" : "updating";
+      
+      toast({
+        variant: "destructive",
+        title: `Error ${action} conversation`,
+        description: error.message,
+      });
+    },
+  });
   const update = (inputs: Partial<RouterInputs["mailbox"]["conversations"]["update"]>) =>
     updateConversation({ mailboxSlug, conversationSlug, ...inputs });
 
   const updateStatus = useCallback(
     (status: "closed" | "spam" | "open") => {
-      try {
-        const previousStatus = data?.status;
-        update({ status });
-        if (status === "open") {
-          removeConversationKeepActive();
-        } else {
-          removeConversation();
-        }
-        if (status === "spam") {
+      const previousStatus = data?.status;
+      update({ status });
+      
+      if (status === "open") {
+        removeConversationKeepActive();
+        toast({
+          title: "Conversation reopened",
+          variant: "success",
+        });
+      } else {
+        removeConversation();
+        if (status === "closed") {
           toast({
-            title: "Marked as spam",
-            action: (
-              <ToastAction
-                altText="Undo"
-                onClick={() => {
-                  try {
-                    update({ status: previousStatus ?? "open" });
-                    navigateToConversation(conversationSlug);
-                    toast({
-                      title: "No longer marked as spam",
-                    });
-                  } catch (e) {
-                    captureExceptionAndThrowIfDevelopment(e);
-                    toast({
-                      variant: "destructive",
-                      title: "Failed to undo",
-                    });
-                  }
-                }}
-              >
-                Undo
-              </ToastAction>
-            ),
+            title: "Conversation closed",
+            variant: "success",
           });
         }
-      } catch (e) {
-        captureExceptionAndThrowIfDevelopment(e);
+      }
+      
+      if (status === "spam") {
         toast({
-          variant: "destructive",
-          title: "Error closing conversation",
+          title: "Marked as spam",
+          action: (
+            <ToastAction
+              altText="Undo"
+              onClick={() => {
+                try {
+                  update({ status: previousStatus ?? "open" });
+                  navigateToConversation(conversationSlug);
+                  toast({
+                    title: "No longer marked as spam",
+                  });
+                } catch (e) {
+                  captureExceptionAndThrowIfDevelopment(e);
+                  toast({
+                    variant: "destructive",
+                    title: "Failed to undo",
+                  });
+                }
+              }}
+            >
+              Undo
+            </ToastAction>
+          ),
         });
       }
     },
-    [data, removeConversation, navigateToConversation],
+    [data, removeConversation, removeConversationKeepActive, navigateToConversation, conversationSlug, update],
   );
 
   return (
