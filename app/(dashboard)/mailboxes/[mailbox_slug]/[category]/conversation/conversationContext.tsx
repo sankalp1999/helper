@@ -110,9 +110,6 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
       await update({ status });
 
       if (status === "open") {
-        setTimeout(() => {
-          removeConversationKeepActive();
-        }, 100);
         toast({
           title: "Conversation reopened",
           variant: "success",
@@ -156,7 +153,7 @@ export const ConversationContextProvider = ({ children }: { children: React.Reac
         });
       }
     },
-    [update, removeConversation, removeConversationKeepActive, navigateToConversation, conversationSlug, data],
+    [update, removeConversation, navigateToConversation, conversationSlug, data],
   );
 
   return (
