@@ -187,31 +187,9 @@ const MessageThreadPanel = ({
   setPreviewFiles: (files: AttachedFile[]) => void;
 }) => {
   const { mailboxSlug, data: conversationInfo } = useConversationContext();
-  const { searchState } = useConversationSearchStore();
-
-  useEffect(() => {
-    if (
-      searchState.isActive &&
-      searchState.matches.length > 0 &&
-      searchState.currentMatchIndex >= 0 &&
-      scrollRef.current
-    ) {
-      const currentMatch = searchState.matches[searchState.currentMatchIndex];
-      if (currentMatch) {
-        const messageElement = document.querySelector(`[data-message-id="${currentMatch.messageId}"]`);
-        if (messageElement) {
-          messageElement.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-            inline: "nearest",
-          });
-        }
-      }
-    }
-  }, [searchState.currentMatchIndex, searchState.isActive, scrollRef]);
 
   return (
-    <div className="grow overflow-y-auto relative" ref={scrollRef} data-conversation-area>
+    <div className="grow overflow-y-auto relative" ref={scrollRef}>
       <div ref={contentRef as React.RefObject<HTMLDivElement>} className="relative">
         <ScrollToTopButton scrollRef={scrollRef} />
         <div className="flex flex-col gap-8 px-4 py-4 h-full">

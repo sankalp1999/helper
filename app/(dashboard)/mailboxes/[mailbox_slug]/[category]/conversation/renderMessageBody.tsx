@@ -1,9 +1,10 @@
 import "@/components/linkCta.css";
-import React from "react";
 import DOMPurify from "isomorphic-dompurify";
+import React, { type ReactNode } from "react";
 import MessageMarkdown from "@/components/messageMarkdown";
 import { extractEmailPartsFromDocument } from "@/lib/shared/html";
 import { cn } from "@/lib/utils";
+import { createHighlightedText, highlightHtmlText } from "./highlight";
 
 const extractEmailParts = (htmlString: string) =>
   extractEmailPartsFromDocument(
@@ -28,26 +29,7 @@ const adjustAttributes = (html: string) => {
   }
 };
 
-export const highlightSearchTerm = (text: string, searchTerm: string): React.ReactNode => {
-  if (!searchTerm || searchTerm.trim() === "") return text;
-
-  const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
-  const parts = text.split(regex);
-
-  return parts.map((part, index) => {
-    if (part.toLowerCase() === searchTerm.toLowerCase()) {
-      return (
-        <mark
-          key={index}
-          className="bg-yellow-200 dark:bg-yellow-900/70 text-yellow-900 dark:text-yellow-100 rounded px-1 py-0.5 font-semibold border border-yellow-300 dark:border-yellow-700"
-        >
-          {part}
-        </mark>
-      );
-    }
-    return part;
-  });
-};
+export const highlightSearchTerm = createHighlightedText;
 
 export const PlaintextContent = ({ text, searchQuery }: { text: string; searchQuery?: string }) => {
   const lines = text.split("\n");
@@ -55,52 +37,58 @@ export const PlaintextContent = ({ text, searchQuery }: { text: string; searchQu
   return (
     <>
       {lines.map((line, i) => (
-        <p key={i}>
-          {searchQuery ? highlightSearchTerm(line, searchQuery) : line}
-        </p>
+        <p key={i}>{searchQuery ? createHighlightedText(line, searchQuery) : line}</p>
       ))}
     </>
   );
 };
 
-const highlightHtmlContent = (html: string, searchTerm: string): string => {
-  if (!searchTerm || searchTerm.trim() === "") return html;
-
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
-  const textNodes: Text[] = [];
-  let node;
-
-  while ((node = walker.nextNode())) {
-    textNodes.push(node as Text);
-  }
-
-  const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
-
-  textNodes.forEach((textNode) => {
-    const text = textNode.textContent || "";
-    const matches = text.match(regex);
-    
-    if (matches && matches.length > 0) {
-      const span = document.createElement("span");
-      const parts = text.split(regex);
-      
-      parts.forEach((part, index) => {
-        if (part.toLowerCase() === searchTerm.toLowerCase()) {
-          const mark = document.createElement("mark");
-          mark.className = "bg-yellow-200 dark:bg-yellow-900/70 text-yellow-900 dark:text-yellow-100 rounded px-1 py-0.5 font-semibold border border-yellow-300 dark:border-yellow-700";
-          mark.textContent = part;
-          span.appendChild(mark);
-        } else {
-          span.appendChild(document.createTextNode(part));
-        }
-      });
-      
-      textNode.parentNode?.replaceChild(span, textNode);
-    }
+// Process HTML content safely with React components
+const processHtmlWithHighlight = (html: string, searchQuery?: string): ReactNode => {
+  // First sanitize the HTML
+  const sanitized = DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      "a",
+      "b",
+      "i",
+      "em",
+      "strong",
+      "p",
+      "br",
+      "div",
+      "span",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "h5",
+      "h6",
+      "ul",
+      "ol",
+      "li",
+      "blockquote",
+      "code",
+      "pre",
+      "img",
+      "table",
+      "thead",
+      "tbody",
+      "tr",
+      "td",
+      "th",
+      "mark",
+    ],
+    ALLOWED_ATTR: ["href", "src", "alt", "class", "style", "target", "rel"],
   });
 
-  return doc.body.innerHTML;
+  // If no search query, return as-is
+  if (!searchQuery || searchQuery.trim() === "") {
+    return <div dangerouslySetInnerHTML={{ __html: sanitized }} />;
+  }
+
+  // Use the existing HTML highlighting function
+  const highlighted = highlightHtmlText(sanitized, searchQuery);
+  return <div dangerouslySetInnerHTML={{ __html: highlighted }} />;
 };
 
 export const renderMessageBody = ({
@@ -127,18 +115,13 @@ export const renderMessageBody = ({
 
   if (body?.includes("<") && body.includes(">")) {
     const { mainContent: parsedMain, quotedContext: parsedQuoted } = extractEmailParts(body || "");
-    let adjustedMain = adjustAttributes(parsedMain);
-    let adjustedQuoted = parsedQuoted ? adjustAttributes(parsedQuoted) : "";
-
-    if (searchQuery) {
-      adjustedMain = highlightHtmlContent(adjustedMain, searchQuery);
-      adjustedQuoted = adjustedQuoted ? highlightHtmlContent(adjustedQuoted, searchQuery) : "";
-    }
+    const adjustedMain = adjustAttributes(parsedMain);
+    const adjustedQuoted = parsedQuoted ? adjustAttributes(parsedQuoted) : "";
 
     return {
-      mainContent: <div className={cn(className, "prose")} dangerouslySetInnerHTML={{ __html: adjustedMain }} />,
+      mainContent: <div className={cn(className, "prose")}>{processHtmlWithHighlight(adjustedMain, searchQuery)}</div>,
       quotedContext: adjustedQuoted ? (
-        <div className={className} dangerouslySetInnerHTML={{ __html: adjustedQuoted }} />
+        <div className={className}>{processHtmlWithHighlight(adjustedQuoted, searchQuery)}</div>
       ) : null,
     };
   }

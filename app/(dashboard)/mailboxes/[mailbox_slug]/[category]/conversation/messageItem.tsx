@@ -1,5 +1,7 @@
+"use client";
+
 import cx from "classnames";
-import { useMemo, useState, type JSX } from "react";
+import { useEffect, useMemo, useRef, useState, type JSX } from "react";
 import type { AttachedFile, Conversation, Message as MessageType, Note as NoteType } from "@/app/types/global";
 import HumanizedTime from "@/components/humanizedTime";
 import { FlagAsBadAction } from "./flagAsBadAction";
@@ -54,9 +56,20 @@ const MessageItem = ({
   onPreviewAttachment?: (index: number) => void;
   onViewDraftedReply?: () => void;
 }) => {
-  const { searchState } = useConversationSearchStore();
+  const { searchState, registerMessageRef } = useConversationSearchStore();
   const searchQuery = searchState.isActive ? searchState.query : "";
-  
+  const messageRef = useRef<HTMLDivElement>(null);
+
+  // Register message element ref for efficient scroll-to-match
+  useEffect(() => {
+    if (messageRef.current) {
+      registerMessageRef(message.id.toString(), messageRef.current);
+    }
+    return () => {
+      registerMessageRef(message.id.toString(), null);
+    };
+  }, [message.id, registerMessageRef]);
+
   const userMessage = message.role === "user";
   const rightAlignedMessage = !userMessage || message.type === "note";
   const isAIMessage = message.type === "message" && message.role === "ai_assistant";
@@ -83,10 +96,10 @@ const MessageItem = ({
         {searchQuery && message.from
           ? highlightSearchTerm(message.from, searchQuery)
           : message.from
-          ? message.from
-          : message.role === "user"
-          ? "Anonymous"
-          : "Helper agent"}
+            ? message.from
+            : message.role === "user"
+              ? "Anonymous"
+              : "Helper agent"}
       </span>
     </span>,
   );
@@ -173,7 +186,13 @@ const MessageItem = ({
   });
 
   return (
-    <div data-message-item data-type={message.type} data-message-id={message.id} className="responsive-break-words grid">
+    <div
+      ref={messageRef}
+      data-message-item
+      data-type={message.type}
+      data-message-id={message.id}
+      className="responsive-break-words grid"
+    >
       <div className={`flex ${rightAlignedMessage ? "justify-end" : ""}`}>
         <div className={`flex flex-col gap-2 ${rightAlignedMessage ? "items-end" : ""}`}>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">

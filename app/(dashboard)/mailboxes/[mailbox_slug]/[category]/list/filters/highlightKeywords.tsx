@@ -1,34 +1,22 @@
 "use client";
 
-const isTextNode = (node: Node): node is Text => node.nodeType === Node.TEXT_NODE;
 export const highlightKeywords = (htmlString: string, keywords: string[]) => {
   if (!keywords.length) return htmlString;
 
-  const doc = new DOMParser().parseFromString(htmlString, "text/html");
+  let result = htmlString;
 
+  // Process each keyword
   keywords.forEach((keyword) => {
-    const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
+    // Escape special regex characters in the keyword
+    const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-    while (walker.nextNode()) {
-      const node = walker.currentNode;
-      if (isTextNode(node) && node.nodeValue) {
-        const keywordIndex = node.nodeValue.toLowerCase().indexOf(keyword.toLowerCase());
+    // Simple regex that matches whole words
+    // We rely on the fact that the input is already escaped HTML
+    const regex = new RegExp(`\\b(${escapedKeyword})\\b`, "gi");
 
-        if (keywordIndex !== -1) {
-          const span = document.createElement("mark");
-          span.className = "bg-secondary-200";
-          span.textContent = node.nodeValue.substring(keywordIndex, keywordIndex + keyword.length);
-
-          const after = node.splitText(keywordIndex);
-          if (after.nodeValue && node.parentNode) {
-            after.nodeValue = after.nodeValue.substring(keyword.length);
-            node.parentNode.insertBefore(span, after);
-          }
-          walker.nextNode();
-        }
-      }
-    }
+    // Replace matches with highlighted version
+    result = result.replace(regex, '<mark class="bg-secondary-200">$1</mark>');
   });
 
-  return doc.body.innerHTML;
+  return result;
 };

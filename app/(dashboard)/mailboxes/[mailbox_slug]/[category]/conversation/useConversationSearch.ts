@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useDebouncedCallback } from "@/components/useDebouncedCallback";
-import { useConversationSearchStore } from "./searchStore";
 import type { ConversationWithNewMessages } from "./conversation";
+import { useConversationSearchStore } from "./searchStore";
 
 export const useConversationSearch = (conversationInfo: ConversationWithNewMessages | null) => {
   const { searchState, setSearchQuery, setSearchActive, setMatches, nextMatch, previousMatch, resetSearch } =
@@ -97,13 +97,12 @@ export const useConversationSearch = (conversationInfo: ConversationWithNewMessa
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "f") {
         const activeElement = document.activeElement;
-        const isWithinConversation =
-          !activeElement ||
-          activeElement.closest("[data-conversation-area]") ||
-          activeElement === document.body ||
-          activeElement.tagName === "BODY";
+        const isEditing =
+          activeElement?.tagName === "INPUT" ||
+          activeElement?.tagName === "TEXTAREA" ||
+          activeElement?.getAttribute("contenteditable") === "true";
 
-        if (isWithinConversation) {
+        if (!isEditing) {
           e.preventDefault();
           handleSearchToggle();
         }
@@ -124,4 +123,4 @@ export const useConversationSearch = (conversationInfo: ConversationWithNewMessa
     nextMatch,
     previousMatch,
   };
-}; 
+};

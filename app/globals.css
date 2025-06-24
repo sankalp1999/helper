@@ -328,3 +328,14 @@
     --sidebar-width-icon: 100%;
   }
 }
+
+/* Search highlighting styles */
+mark.search-highlight {
+  @apply bg-yellow-200 dark:bg-yellow-900/70 text-yellow-900 dark:text-yellow-100 
+         rounded px-1 py-0.5 font-semibold border border-yellow-300 dark:border-yellow-700;
+}
+
+/* Alternative highlight style for list views */
+mark.bg-secondary-200 {
+  @apply bg-secondary/40;
+}
