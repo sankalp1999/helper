@@ -19,7 +19,7 @@ export const useConversationSearchStore = create<{
   previousMatch: () => void;
   resetSearch: () => void;
   registerMessageRef: (messageId: string, element: HTMLElement | null) => void;
-  scrollToCurrentMatch: () => void;
+  scrollToCurrentMatch: (matchIndex?: number) => void;
 }>()(
   devtools(
     (set, get) => ({
@@ -51,36 +51,33 @@ export const useConversationSearchStore = create<{
           searchState: { ...state.searchState, currentMatchIndex: index },
         })),
       nextMatch: () => {
-        const { searchState, scrollToCurrentMatch } = get();
+        const { searchState } = get();
         if (searchState.matches.length === 0) return;
         const nextIndex = (searchState.currentMatchIndex + 1) % searchState.matches.length;
         set((state) => ({
           searchState: { ...state.searchState, currentMatchIndex: nextIndex },
         }));
-        // Scroll immediately after state update
-        scrollToCurrentMatch();
+        get().scrollToCurrentMatch(nextIndex);
       },
       previousMatch: () => {
-        const { searchState, scrollToCurrentMatch } = get();
+        const { searchState } = get();
         if (searchState.matches.length === 0) return;
         const prevIndex =
           searchState.currentMatchIndex === 0 ? searchState.matches.length - 1 : searchState.currentMatchIndex - 1;
         set((state) => ({
           searchState: { ...state.searchState, currentMatchIndex: prevIndex },
         }));
-        // Scroll immediately after state update
-        scrollToCurrentMatch();
+        get().scrollToCurrentMatch(prevIndex);
       },
       resetSearch: () =>
-        set({
+        set((state) => ({
           searchState: {
             query: "",
             isActive: false,
             matches: [],
             currentMatchIndex: -1,
           },
-          messageRefs: new Map<string, HTMLElement>(),
-        }),
+        })),
       registerMessageRef: (messageId: string, element: HTMLElement | null) => {
         set((state) => {
           const newRefs = new Map(state.messageRefs);
@@ -92,18 +89,21 @@ export const useConversationSearchStore = create<{
           return { messageRefs: newRefs };
         });
       },
-      scrollToCurrentMatch: () => {
+      scrollToCurrentMatch: (matchIndex?: number) => {
         const { searchState, messageRefs } = get();
-        if (searchState.isActive && searchState.matches.length > 0 && searchState.currentMatchIndex >= 0) {
-          const currentMatch = searchState.matches[searchState.currentMatchIndex];
-          if (currentMatch) {
-            const messageElement = messageRefs.get(currentMatch.messageId);
-            if (messageElement) {
-              messageElement.scrollIntoView({
-                behavior: "smooth",
-                block: "center",
-                inline: "nearest",
-              });
+        if (searchState.isActive && searchState.matches.length > 0) {
+          const indexToUse = matchIndex !== undefined ? matchIndex : searchState.currentMatchIndex;
+          if (indexToUse >= 0) {
+            const currentMatch = searchState.matches[indexToUse];
+            if (currentMatch) {
+              const messageElement = messageRefs.get(currentMatch.messageId);
+              if (messageElement) {
+                messageElement.scrollIntoView({
+                  behavior: "smooth",
+                  block: "center",
+                  inline: "nearest",
+                });
+              }
             }
           }
         }
