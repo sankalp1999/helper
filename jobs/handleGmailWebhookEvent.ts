@@ -302,6 +302,7 @@ export const handleGmailWebhookEvent = async ({ body, headers }: any) => {
             slug: conversations.slug,
             status: conversations.status,
             assignedToAI: conversations.assignedToAI,
+            closedAt: conversations.closedAt,
           })
           .then(takeUniqueOrThrow);
       };
@@ -320,6 +321,7 @@ export const handleGmailWebhookEvent = async ({ body, headers }: any) => {
                 slug: true,
                 status: true,
                 assignedToAI: true,
+                closedAt: true,
               },
             },
           },
@@ -344,7 +346,8 @@ export const handleGmailWebhookEvent = async ({ body, headers }: any) => {
       if (
         conversation.status === "closed" &&
         (!conversation.assignedToAI || mailbox.preferences?.autoRespondEmailToChat === "draft") &&
-        !shouldIgnore
+        !shouldIgnore &&
+        (!conversation.closedAt || newEmail.createdAt > conversation.closedAt)
       ) {
         await updateConversation(conversation.id, { set: { status: "open" } });
       }
