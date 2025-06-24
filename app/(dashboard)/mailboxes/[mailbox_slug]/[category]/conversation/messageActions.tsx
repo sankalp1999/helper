@@ -200,12 +200,8 @@ export const MessageActions = () => {
     setInitialMessageObject({ content: undoneEmail.message });
     resetFiles(undoneEmail.files);
 
-    try {
-      if (editorRef.current?.editor && !editorRef.current.editor.isDestroyed) {
-        editorRef.current.editor.commands.setContent(undoneEmail.message);
-      }
-    } catch (error) {
-      captureExceptionAndLog(error);
+    if (editorRef.current?.editor && !editorRef.current.editor.isDestroyed) {
+      editorRef.current.editor.commands.setContent(undoneEmail.message);
     }
 
     setUndoneEmail(undefined);
@@ -283,44 +279,47 @@ export const MessageActions = () => {
       toast({
         title: close ? "Replied and closed" : "Message sent!",
         variant: "success",
-        action: close ? (
-          <ToastAction
-            altText="Visit"
-            onClick={() => {
-              navigateToConversation(conversation.slug);
-            }}
-          >
-            Visit
-          </ToastAction>
-        ) : (
-          <ToastAction
-            altText="Undo"
-            onClick={async () => {
-              try {
-                await utils.client.mailbox.conversations.undo.mutate({
-                  mailboxSlug,
-                  conversationSlug,
-                  emailId,
-                });
-                setUndoneEmail(originalDraftedEmail);
-                toast({
-                  title: "Message unsent",
-                  variant: "success",
-                });
-              } catch (e) {
-                captureExceptionAndLog(e);
-                toast({
-                  variant: "destructive",
-                  title: "Failed to unsend email",
-                });
-              } finally {
-                utils.mailbox.conversations.get.invalidate({ mailboxSlug, conversationSlug });
-                navigateToConversation(conversation.slug);
-              }
-            }}
-          >
-            Undo
-          </ToastAction>
+        action: (
+          <div className="flex gap-2">
+            <ToastAction
+              altText="Undo"
+              onClick={async () => {
+                try {
+                  await utils.client.mailbox.conversations.undo.mutate({
+                    mailboxSlug,
+                    conversationSlug,
+                    emailId,
+                  });
+                  setUndoneEmail(originalDraftedEmail);
+                  toast({
+                    title: "Message unsent",
+                    variant: "success",
+                  });
+                } catch (e) {
+                  captureExceptionAndLog(e);
+                  toast({
+                    variant: "destructive",
+                    title: "Failed to unsend email",
+                  });
+                } finally {
+                  utils.mailbox.conversations.get.invalidate({ mailboxSlug, conversationSlug });
+                  navigateToConversation(conversation.slug);
+                }
+              }}
+            >
+              Undo
+            </ToastAction>
+            {close && (
+              <ToastAction
+                altText="Visit"
+                onClick={() => {
+                  navigateToConversation(conversation.slug);
+                }}
+              >
+                Visit
+              </ToastAction>
+            )}
+          </div>
         ),
       });
     } catch (error) {
