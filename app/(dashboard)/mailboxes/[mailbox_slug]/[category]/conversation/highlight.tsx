@@ -59,17 +59,23 @@ export const countMatches = (text: string, searchQuery: string): number => {
 
 /**
  * Processes an HTML string to extract text content and apply highlighting
- * This is a simplified version that avoids DOM manipulation
+ * This approach splits HTML into tags and text content, only highlighting text
  */
 export const highlightHtmlText = (html: string, searchQuery?: string): string => {
   if (!searchQuery || searchQuery.trim() === "") return html;
 
-  // This is a simple regex-based approach that highlights text within HTML
-  // It avoids matching text inside HTML tags
-  const regex = new RegExp(`(>|^)([^<]*)?(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})([^<]*)?(<|$)`, "gi");
+  const escapedQuery = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-  return html.replace(regex, (match, prefix, before, term, after, suffix) => {
-    const highlighted = `<mark class="search-highlight">${term}</mark>`;
-    return `${prefix}${before || ""}${highlighted}${after || ""}${suffix}`;
-  });
+  const parts = html.split(/(<[^>]*>)/);
+
+  return parts
+    .map((part) => {
+      if (part.startsWith("<") && part.endsWith(">")) {
+        return part;
+      }
+
+      const regex = new RegExp(`(${escapedQuery})`, "gi");
+      return part.replace(regex, '<mark class="search-highlight">$1</mark>');
+    })
+    .join("");
 };

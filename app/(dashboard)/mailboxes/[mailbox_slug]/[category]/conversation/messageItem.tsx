@@ -161,15 +161,22 @@ const MessageItem = ({
 
   const isChatMessage =
     message.type === "message" && message.role === "user" && conversation.source !== "email" && !message.emailTo;
+
+  // Detect HTML content to prevent ReactMarkdown from escaping it, which breaks search highlighting
+  // Many messages are entirely HTML due to email clients (Gmail, Outlook) using HTML by default,
+  // rich text editors, and email signatures with styling
+  const looksLikeHtml = message.body?.includes("<") && message.body?.includes(">");
+  const shouldUseMarkdown = (isChatMessage || message.type === "note" || isAIMessage) && !looksLikeHtml;
+
   const { mainContent, quotedContext } = useMemo(
     () =>
       renderMessageBody({
         body: message.body,
-        isMarkdown: isChatMessage || message.type === "note" || isAIMessage,
+        isMarkdown: shouldUseMarkdown,
         className: "lg:prose-base prose-sm **:text-foreground! **:bg-transparent!",
         searchQuery,
       }),
-    [message.body, message.type, isAIMessage, isChatMessage, searchQuery],
+    [message.body, message.type, isAIMessage, isChatMessage, searchQuery, shouldUseMarkdown],
   );
 
   const splitMergedMutation = api.mailbox.conversations.splitMerged.useMutation({
