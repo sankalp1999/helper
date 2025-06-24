@@ -88,9 +88,9 @@ const MessageItem = ({
     refetchOnMount: false,
   });
 
-  const getDisplayName = (msg: MessageType | NoteType): string => {
+  const getDisplayName = (msg: MessageType | NoteType): React.ReactNode => {
     if (msg.type === "message") {
-      if (msg.from && searchQuery) return highlightSearchTerm(message.from, searchQuery);
+      if (msg.from && searchQuery) return highlightSearchTerm(msg.from, searchQuery);
 
       if (msg.role === "user") {
         return msg.from || "Anonymous";

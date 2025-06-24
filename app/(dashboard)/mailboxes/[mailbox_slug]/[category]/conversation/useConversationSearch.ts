@@ -23,7 +23,7 @@ export const useConversationSearch = (conversationInfo: ConversationWithNewMessa
       conversationInfo.messages.forEach((message, messageIndex) => {
         if (message.type === "message" || message.type === "note") {
           const bodyText = message.body || "";
-          const fromText = message.from || "";
+          const fromText = message.type === "message" ? message.from || "" : "";
 
           const bodyMatches = Array.from(bodyText.matchAll(regex));
           bodyMatches.forEach(() => {
