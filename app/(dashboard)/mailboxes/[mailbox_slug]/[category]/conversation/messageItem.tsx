@@ -27,6 +27,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
 import { api } from "@/trpc/react";
 import { highlightSearchTerm, renderMessageBody } from "./renderMessageBody";
+import { useConversationSearchStore } from "./searchStore";
 
 function getPreviewUrl(file: AttachedFile): string {
   return file.previewUrl
@@ -46,15 +47,16 @@ const MessageItem = ({
   message,
   onViewDraftedReply,
   onPreviewAttachment,
-  searchQuery,
 }: {
   mailboxSlug: string;
   conversation: Conversation;
   message: (MessageType | NoteType) & { isNew?: boolean };
   onPreviewAttachment?: (index: number) => void;
   onViewDraftedReply?: () => void;
-  searchQuery?: string;
 }) => {
+  const { searchState } = useConversationSearchStore();
+  const searchQuery = searchState.isActive ? searchState.query : "";
+  
   const userMessage = message.role === "user";
   const rightAlignedMessage = !userMessage || message.type === "note";
   const isAIMessage = message.type === "message" && message.role === "ai_assistant";
@@ -77,15 +79,15 @@ const MessageItem = ({
       ) : (
         <Bot className="h-3 w-3" />
       )}
-      {searchQuery && message.from ? (
-        <span dangerouslySetInnerHTML={{ __html: highlightSearchTerm(message.from, searchQuery) }} />
-      ) : message.from ? (
-        message.from
-      ) : message.role === "user" ? (
-        "Anonymous"
-      ) : (
-        "Helper agent"
-      )}
+      <span>
+        {searchQuery && message.from
+          ? highlightSearchTerm(message.from, searchQuery)
+          : message.from
+          ? message.from
+          : message.role === "user"
+          ? "Anonymous"
+          : "Helper agent"}
+      </span>
     </span>,
   );
   if (message.type === "message" && message.emailTo)
@@ -171,7 +173,7 @@ const MessageItem = ({
   });
 
   return (
-    <div data-message-item data-type={message.type} data-id={message.id} className="responsive-break-words grid">
+    <div data-message-item data-type={message.type} data-message-id={message.id} className="responsive-break-words grid">
       <div className={`flex ${rightAlignedMessage ? "justify-end" : ""}`}>
         <div className={`flex flex-col gap-2 ${rightAlignedMessage ? "items-end" : ""}`}>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">

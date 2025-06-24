@@ -26,6 +26,8 @@ import {
   useConversationContext,
 } from "@/app/(dashboard)/mailboxes/[mailbox_slug]/[category]/conversation/conversationContext";
 import { MessageThread } from "@/app/(dashboard)/mailboxes/[mailbox_slug]/[category]/conversation/messageThread";
+import { useConversationSearchStore } from "@/app/(dashboard)/mailboxes/[mailbox_slug]/[category]/conversation/searchStore";
+import { useConversationSearch } from "@/app/(dashboard)/mailboxes/[mailbox_slug]/[category]/conversation/useConversationSearch";
 import Viewers from "@/app/(dashboard)/mailboxes/[mailbox_slug]/[category]/conversation/viewers";
 import { useConversationListContext } from "@/app/(dashboard)/mailboxes/[mailbox_slug]/[category]/list/conversationListContext";
 import PreviewModal from "@/app/(dashboard)/mailboxes/[mailbox_slug]/[category]/previewModal";
@@ -61,84 +63,6 @@ import { MessageActions } from "./messageActions";
 export type ConversationWithNewMessages = Omit<ConversationType, "messages"> & {
   messages: ((Message | Note | ConversationEvent) & { isNew?: boolean })[];
 };
-
-export type SearchState = {
-  query: string;
-  isActive: boolean;
-  matches: { messageId: string; messageIndex: number; matchIndex: number }[];
-  currentMatchIndex: number;
-};
-
-export const useConversationSearchStore = create<{
-  searchState: SearchState;
-  setSearchQuery: (query: string) => void;
-  setSearchActive: (active: boolean) => void;
-  setMatches: (matches: { messageId: string; messageIndex: number; matchIndex: number }[]) => void;
-  setCurrentMatchIndex: (index: number) => void;
-  nextMatch: () => void;
-  previousMatch: () => void;
-  resetSearch: () => void;
-}>()(
-  devtools(
-    (set, get) => ({
-      searchState: {
-        query: "",
-        isActive: false,
-        matches: [],
-        currentMatchIndex: -1,
-      },
-      setSearchQuery: (query) =>
-        set((state) => ({
-          searchState: { ...state.searchState, query },
-        })),
-      setSearchActive: (active) =>
-        set((state) => ({
-          searchState: { ...state.searchState, isActive: active },
-        })),
-      setMatches: (matches) =>
-        set((state) => ({
-          searchState: {
-            ...state.searchState,
-            matches,
-            currentMatchIndex: matches.length > 0 ? 0 : -1,
-          },
-        })),
-      setCurrentMatchIndex: (index) =>
-        set((state) => ({
-          searchState: { ...state.searchState, currentMatchIndex: index },
-        })),
-      nextMatch: () => {
-        const { searchState } = get();
-        if (searchState.matches.length === 0) return;
-        const nextIndex = (searchState.currentMatchIndex + 1) % searchState.matches.length;
-        set((state) => ({
-          searchState: { ...state.searchState, currentMatchIndex: nextIndex },
-        }));
-      },
-      previousMatch: () => {
-        const { searchState } = get();
-        if (searchState.matches.length === 0) return;
-        const prevIndex =
-          searchState.currentMatchIndex === 0 ? searchState.matches.length - 1 : searchState.currentMatchIndex - 1;
-        set((state) => ({
-          searchState: { ...state.searchState, currentMatchIndex: prevIndex },
-        }));
-      },
-      resetSearch: () =>
-        set({
-          searchState: {
-            query: "",
-            isActive: false,
-            matches: [],
-            currentMatchIndex: -1,
-          },
-        }),
-    }),
-    {
-      name: "conversation-search-store",
-    },
-  ),
-);
 
 const { Carousel, CarouselButton, CarouselContext } = createCarousel<AttachedFile>();
 
@@ -299,7 +223,6 @@ const MessageThreadPanel = ({
                 setPreviewFileIndex(currentIndex);
                 setPreviewFiles(message.files);
               }}
-              searchQuery={searchState.isActive ? searchState.query : ""}
             />
           )}
         </div>
@@ -323,123 +246,33 @@ const MessageActionsPanel = () => {
 };
 
 const ConversationHeader = ({
+  conversationInfo,
   conversationMetadata,
-  isAboveSm,
+  mailboxSlug,
   sidebarVisible,
   setSidebarVisible,
+  isAboveSm,
 }: {
+  conversationInfo: ConversationType | null;
   conversationMetadata: any;
-  isAboveSm: boolean;
+  mailboxSlug: string;
   sidebarVisible: boolean;
   setSidebarVisible: (visible: boolean) => void;
+  isAboveSm: boolean;
 }) => {
-  const { mailboxSlug, data: conversationInfo } = useConversationContext();
   const { minimize, moveToNextConversation, moveToPreviousConversation, currentIndex, currentTotal, hasNextPage } =
     useConversationListContext();
 
-  const { searchState, setSearchQuery, setSearchActive, setMatches, nextMatch, previousMatch, resetSearch } =
-    useConversationSearchStore();
-
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  const searchInMessages = useCallback(
-    (query: string) => {
-      if (!conversationInfo || !query.trim()) {
-        setMatches([]);
-        return;
-      }
-
-      const matches: { messageId: string; messageIndex: number; matchIndex: number }[] = [];
-      const searchTerm = query.toLowerCase();
-      const regex = new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
-
-      conversationInfo.messages.forEach((message, messageIndex) => {
-        if (message.type === "message" || message.type === "note") {
-          const bodyText = message.body || "";
-          const fromText = message.from || "";
-
-          // Count matches in body text
-          const bodyMatches = Array.from(bodyText.matchAll(regex));
-          bodyMatches.forEach((_, matchIndex) => {
-            matches.push({
-              messageId: message.id.toString(),
-              messageIndex,
-              matchIndex: matches.length,
-            });
-          });
-
-          // Count matches in sender name
-          const fromMatches = Array.from(fromText.matchAll(regex));
-          fromMatches.forEach((_, matchIndex) => {
-            matches.push({
-              messageId: message.id.toString(),
-              messageIndex,
-              matchIndex: matches.length,
-            });
-          });
-        }
-      });
-
-      setMatches(matches);
-    },
-    [conversationInfo, setMatches],
-  );
-
-  const debouncedSearchInMessages = useDebouncedCallback(searchInMessages, 300);
-
-  const handleSearchToggle = useCallback(() => {
-    if (searchState.isActive) {
-      resetSearch();
-    } else {
-      setSearchActive(true);
-      setTimeout(() => searchInputRef.current?.focus(), 100);
-    }
-  }, [searchState.isActive, resetSearch, setSearchActive]);
-
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
-
-    if (!value.trim()) {
-      setMatches([]);
-      return;
-    }
-
-    debouncedSearchInMessages(value);
-  };
-
-  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (e.shiftKey) {
-        previousMatch();
-      } else {
-        nextMatch();
-      }
-    } else if (e.key === "Escape") {
-      resetSearch();
-    }
-  };
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
-        const activeElement = document.activeElement;
-        const isWithinConversation =
-          !activeElement ||
-          activeElement.closest("[data-conversation-area]") ||
-          activeElement === document.body ||
-          activeElement.tagName === "BODY";
-
-        if (isWithinConversation) {
-          e.preventDefault();
-          handleSearchToggle();
-        }
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [handleSearchToggle]);
+  const {
+    searchState,
+    searchInputRef,
+    handleSearchToggle,
+    handleSearchChange,
+    handleSearchKeyDown,
+    resetSearch,
+    nextMatch,
+    previousMatch,
+  } = useConversationSearch(conversationInfo);
 
   return (
     <div
@@ -449,7 +282,6 @@ const ConversationHeader = ({
         searchState.isActive ? "h-auto min-h-12 py-2" : "h-12",
       )}
       style={{ minHeight: 48 }}
-      data-conversation-area
     >
       <div className="flex items-center min-w-0 flex-shrink-0 z-10 lg:w-44">
         <Button variant="ghost" size="sm" iconOnly onClick={minimize} className="text-primary hover:text-foreground">
@@ -750,10 +582,12 @@ const ConversationContent = () => {
                   setPreviewFiles={setPreviewFiles}
                 />
                 <ConversationHeader
+                  conversationInfo={conversationInfo}
                   conversationMetadata={conversationMetadata}
-                  isAboveSm={isAboveSm}
+                  mailboxSlug={mailboxSlug}
                   sidebarVisible={sidebarVisible}
                   setSidebarVisible={setSidebarVisible}
+                  isAboveSm={isAboveSm}
                 />
                 <ErrorContent />
                 <LoadingContent />
@@ -801,10 +635,12 @@ const ConversationContent = () => {
           setPreviewFiles={setPreviewFiles}
         />
         <ConversationHeader
+          conversationInfo={conversationInfo}
           conversationMetadata={conversationMetadata}
-          isAboveSm={isAboveSm}
+          mailboxSlug={mailboxSlug}
           sidebarVisible={sidebarVisible}
           setSidebarVisible={setSidebarVisible}
+          isAboveSm={isAboveSm}
         />
         <ErrorContent />
         <LoadingContent />

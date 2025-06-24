@@ -10,12 +10,10 @@ export const MessageThread = ({
   conversation,
   onPreviewAttachment,
   mailboxSlug,
-  searchQuery,
 }: {
   conversation: ConversationWithNewMessages;
   onPreviewAttachment: (message: Message, index: number) => void;
   mailboxSlug: string;
-  searchQuery?: string;
 }) => {
   return (
     <div className="flex h-full flex-col">
@@ -36,19 +34,17 @@ export const MessageThread = ({
               initialExpanded={index === conversation.messages.length - 1}
             />
           ) : (
-            <div key={`${message.type}-${message.id}`} data-message-id={message.id}>
-              <MessageItem
-                message={message}
-                mailboxSlug={mailboxSlug}
-                conversation={conversation}
-                searchQuery={searchQuery}
-                onPreviewAttachment={
-                  message.type === "message" && message.files.length
-                    ? (index) => onPreviewAttachment(message, index)
-                    : undefined
-                }
-              />
-            </div>
+            <MessageItem
+              key={`${message.type}-${message.id}`}
+              message={message}
+              mailboxSlug={mailboxSlug}
+              conversation={conversation}
+              onPreviewAttachment={
+                message.type === "message" && message.files.length
+                  ? (index) => onPreviewAttachment(message, index)
+                  : undefined
+              }
+            />
           ),
         )}
         {conversation.summary && conversation.summary.length > 0 && (

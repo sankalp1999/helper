@@ -1,4 +1,5 @@
 import "@/components/linkCta.css";
+import React from "react";
 import DOMPurify from "isomorphic-dompurify";
 import MessageMarkdown from "@/components/messageMarkdown";
 import { extractEmailPartsFromDocument } from "@/lib/shared/html";
@@ -27,45 +28,79 @@ const adjustAttributes = (html: string) => {
   }
 };
 
-const escapeHtml = (text: string): string => {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
-};
+export const highlightSearchTerm = (text: string, searchTerm: string): React.ReactNode => {
+  if (!searchTerm || searchTerm.trim() === "") return text;
 
-export const highlightSearchTerm = (text: string, searchTerm: string): string => {
-  if (!searchTerm || searchTerm.trim() === "") return escapeHtml(text);
+  const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+  const parts = text.split(regex);
 
-  const escapedText = escapeHtml(text);
-  const escapedSearchTerm = escapeHtml(searchTerm);
-
-  const regex = new RegExp(`(${escapedSearchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
-  return escapedText.replace(
-    regex,
-    '<mark class="bg-yellow-200 dark:bg-yellow-900/70 text-yellow-900 dark:text-yellow-100 rounded px-1 py-0.5 font-semibold border border-yellow-300 dark:border-yellow-700">$1</mark>',
-  );
+  return parts.map((part, index) => {
+    if (part.toLowerCase() === searchTerm.toLowerCase()) {
+      return (
+        <mark
+          key={index}
+          className="bg-yellow-200 dark:bg-yellow-900/70 text-yellow-900 dark:text-yellow-100 rounded px-1 py-0.5 font-semibold border border-yellow-300 dark:border-yellow-700"
+        >
+          {part}
+        </mark>
+      );
+    }
+    return part;
+  });
 };
 
 export const PlaintextContent = ({ text, searchQuery }: { text: string; searchQuery?: string }) => {
   const lines = text.split("\n");
 
-  if (searchQuery) {
-    return (
-      <>
-        {lines.map((line, i) => (
-          <p key={i} dangerouslySetInnerHTML={{ __html: highlightSearchTerm(line, searchQuery) }} />
-        ))}
-      </>
-    );
-  }
-
   return (
     <>
       {lines.map((line, i) => (
-        <p key={i}>{line}</p>
+        <p key={i}>
+          {searchQuery ? highlightSearchTerm(line, searchQuery) : line}
+        </p>
       ))}
     </>
   );
+};
+
+const highlightHtmlContent = (html: string, searchTerm: string): string => {
+  if (!searchTerm || searchTerm.trim() === "") return html;
+
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
+  const textNodes: Text[] = [];
+  let node;
+
+  while ((node = walker.nextNode())) {
+    textNodes.push(node as Text);
+  }
+
+  const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+
+  textNodes.forEach((textNode) => {
+    const text = textNode.textContent || "";
+    const matches = text.match(regex);
+    
+    if (matches && matches.length > 0) {
+      const span = document.createElement("span");
+      const parts = text.split(regex);
+      
+      parts.forEach((part, index) => {
+        if (part.toLowerCase() === searchTerm.toLowerCase()) {
+          const mark = document.createElement("mark");
+          mark.className = "bg-yellow-200 dark:bg-yellow-900/70 text-yellow-900 dark:text-yellow-100 rounded px-1 py-0.5 font-semibold border border-yellow-300 dark:border-yellow-700";
+          mark.textContent = part;
+          span.appendChild(mark);
+        } else {
+          span.appendChild(document.createTextNode(part));
+        }
+      });
+      
+      textNode.parentNode?.replaceChild(span, textNode);
+    }
+  });
+
+  return doc.body.innerHTML;
 };
 
 export const renderMessageBody = ({
@@ -96,8 +131,8 @@ export const renderMessageBody = ({
     let adjustedQuoted = parsedQuoted ? adjustAttributes(parsedQuoted) : "";
 
     if (searchQuery) {
-      adjustedMain = highlightSearchTerm(adjustedMain, searchQuery);
-      adjustedQuoted = adjustedQuoted ? highlightSearchTerm(adjustedQuoted, searchQuery) : "";
+      adjustedMain = highlightHtmlContent(adjustedMain, searchQuery);
+      adjustedQuoted = adjustedQuoted ? highlightHtmlContent(adjustedQuoted, searchQuery) : "";
     }
 
     return {
