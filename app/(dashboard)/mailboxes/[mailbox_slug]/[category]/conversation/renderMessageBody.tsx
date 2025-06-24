@@ -5,6 +5,7 @@ import MessageMarkdown from "@/components/messageMarkdown";
 import { extractEmailPartsFromDocument } from "@/lib/shared/html";
 import { cn } from "@/lib/utils";
 import { createHighlightedText, highlightHtmlText } from "./highlight";
+import { isHtmlContent } from "./isHtmlContent";
 
 const extractEmailParts = (htmlString: string) =>
   extractEmailPartsFromDocument(
@@ -113,7 +114,7 @@ export const renderMessageBody = ({
     };
   }
 
-  if (body?.includes("<") && body.includes(">")) {
+  if (isHtmlContent(body)) {
     const { mainContent: parsedMain, quotedContext: parsedQuoted } = extractEmailParts(body || "");
     const adjustedMain = adjustAttributes(parsedMain);
     const adjustedQuoted = parsedQuoted ? adjustAttributes(parsedQuoted) : "";

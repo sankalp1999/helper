@@ -28,6 +28,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
 import { api } from "@/trpc/react";
+import { isHtmlContent } from "./isHtmlContent";
 import { highlightSearchTerm, renderMessageBody } from "./renderMessageBody";
 import { useConversationSearchStore } from "./searchStore";
 
@@ -165,7 +166,7 @@ const MessageItem = ({
   // Detect HTML content to prevent ReactMarkdown from escaping it, which breaks search highlighting
   // Many messages are entirely HTML due to email clients (Gmail, Outlook) using HTML by default,
   // rich text editors, and email signatures with styling
-  const looksLikeHtml = message.body?.includes("<") && message.body?.includes(">");
+  const looksLikeHtml = isHtmlContent(message.body);
   const shouldUseMarkdown = (isChatMessage || message.type === "note" || isAIMessage) && !looksLikeHtml;
 
   const { mainContent, quotedContext } = useMemo(
