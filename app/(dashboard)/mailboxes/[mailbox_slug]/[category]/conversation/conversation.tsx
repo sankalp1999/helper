@@ -252,17 +252,6 @@ const ConversationHeader = ({
     previousMatch,
   } = useConversationSearch(conversationInfo);
 
-  useEffect(() => {
-    if (searchState.isActive && conversationMetadata.subject) {
-      const originalTitle = document.title;
-      document.title = `${conversationMetadata.subject} - Helper`;
-
-      return () => {
-        document.title = originalTitle;
-      };
-    }
-  }, [searchState.isActive, conversationMetadata.subject]);
-
   return (
     <div
       className={cn(
