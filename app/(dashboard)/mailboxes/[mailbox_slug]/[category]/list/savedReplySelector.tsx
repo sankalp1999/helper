@@ -37,14 +37,12 @@ export function SavedReplySelector({ savedReplies, onSelect }: SavedReplySelecto
     setSearchValue("");
   };
 
-  // Reset search when popover closes
   useEffect(() => {
     if (!open) {
       setSearchValue("");
     }
   }, [open]);
 
-  // Keyboard shortcut to toggle saved reply selector
   useHotkeys(
     "mod+slash",
     (e) => {
@@ -69,7 +67,7 @@ export function SavedReplySelector({ savedReplies, onSelect }: SavedReplySelecto
         >
           <span className="flex items-center gap-2">
             <SavedReplyIcon className="h-4 w-4" />
-            <span>Insert saved reply</span>
+            <span>Use saved reply</span>
           </span>
           <div className="flex items-center gap-2">
             <KeyboardShortcut className="text-muted-foreground">{isMacOS() ? "⌘/" : "Ctrl+/"}</KeyboardShortcut>

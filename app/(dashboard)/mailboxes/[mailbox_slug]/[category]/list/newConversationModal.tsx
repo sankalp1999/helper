@@ -103,9 +103,17 @@ const NewConversationModal = ({ mailboxSlug, conversationSlug, onSubmit }: Props
       try {
         if (editorRef.current?.editor) {
           const plainText = stripHtmlTags(savedReply.content);
-          const insertionSuccess = editorRef.current.editor.chain().focus().insertContent(`${plainText} `).run();
+          
+          editorRef.current.editor.commands.clearContent();
+          const replacementSuccess = editorRef.current.editor.chain().focus().insertContent(plainText).run();
 
-          if (insertionSuccess) {
+          if (replacementSuccess) {
+            setNewConversationInfo((info) => ({
+              ...info,
+              subject: savedReply.name,
+              message: plainText,
+            }));
+
             incrementSavedReplyUsage(
               { slug: savedReply.slug, mailboxSlug },
               {
@@ -115,18 +123,18 @@ const NewConversationModal = ({ mailboxSlug, conversationSlug, onSubmit }: Props
               },
             );
 
-            toast.success(`Saved reply "${savedReply.name}" inserted`);
+            toast.success(`Saved reply "${savedReply.name}" applied`);
           } else {
-            toast.error("Failed to insert saved reply content");
+            toast.error("Failed to apply saved reply content");
           }
         } else {
-          toast.error("Failed to insert saved reply - editor not available");
+          toast.error("Failed to apply saved reply - editor not available");
         }
       } catch (error) {
-        captureExceptionAndLog("Failed to insert saved reply content", {
+        captureExceptionAndLog("Failed to apply saved reply content", {
           extra: { error },
         });
-        toast.error("Failed to insert saved reply");
+        toast.error("Failed to apply saved reply");
       }
     },
     [incrementSavedReplyUsage, mailboxSlug],
