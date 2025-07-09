@@ -16,11 +16,11 @@ import { DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { parseEmailList } from "@/components/utils/email";
+import { stripHtmlTags } from "@/components/utils/html";
 import { parseEmailAddress } from "@/lib/emails";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
 import { RouterInputs } from "@/trpc";
 import { api } from "@/trpc/react";
-import { stripHtmlTags } from "@/components/utils/html";
 import { SavedReplySelector } from "./savedReplySelector";
 
 type NewConversationInfo = {
@@ -49,7 +49,6 @@ const NewConversationModal = ({ mailboxSlug, conversationSlug, onSubmit }: Props
   const { sendDisabled, sending, setSending } = useSendDisabled(newConversationInfo.message);
   const editorRef = useRef<TipTapEditorRef | null>(null);
 
-  // Fetch saved replies
   const { data: savedReplies } = api.mailbox.savedReplies.list.useQuery(
     { mailboxSlug, onlyActive: true },
     { refetchOnWindowFocus: false, refetchOnMount: true },
@@ -102,23 +101,24 @@ const NewConversationModal = ({ mailboxSlug, conversationSlug, onSubmit }: Props
   const handleSavedReplySelect = useCallback(
     (savedReply: { slug: string; content: string; name: string }) => {
       try {
-        // Insert the saved reply at the current cursor position
         if (editorRef.current?.editor) {
-          // Strip HTML tags and insert as plain text to avoid block elements
           const plainText = stripHtmlTags(savedReply.content);
-          editorRef.current.editor.chain().focus().insertContent(plainText + " ").run();
+          const insertionSuccess = editorRef.current.editor.chain().focus().insertContent(`${plainText} `).run();
 
-          // Track usage only after successful insertion
-          incrementSavedReplyUsage(
-            { slug: savedReply.slug, mailboxSlug },
-            {
-              onError: (error) => {
-                captureExceptionAndLog("Failed to track saved reply usage:", error);
+          if (insertionSuccess) {
+            incrementSavedReplyUsage(
+              { slug: savedReply.slug, mailboxSlug },
+              {
+                onError: (error) => {
+                  captureExceptionAndLog("Failed to track saved reply usage:", error);
+                },
               },
-            },
-          );
+            );
 
-          toast.success(`Saved reply "${savedReply.name}" inserted`);
+            toast.success(`Saved reply "${savedReply.name}" inserted`);
+          } else {
+            toast.error("Failed to insert saved reply content");
+          }
         } else {
           toast.error("Failed to insert saved reply - editor not available");
         }

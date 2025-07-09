@@ -18,7 +18,6 @@ export function SavedReplySelector({ savedReplies, onSelect }: SavedReplySelecto
   const [searchValue, setSearchValue] = useState("");
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  // Filter saved replies based on search
   const filteredReplies = savedReplies.filter(
     (reply) =>
       reply.name.toLowerCase().includes(searchValue.toLowerCase()) ||
