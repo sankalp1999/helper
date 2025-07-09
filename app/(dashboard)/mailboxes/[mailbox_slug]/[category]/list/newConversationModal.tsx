@@ -20,6 +20,7 @@ import { parseEmailAddress } from "@/lib/emails";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
 import { RouterInputs } from "@/trpc";
 import { api } from "@/trpc/react";
+import { stripHtmlTags } from "@/components/utils/html";
 import { SavedReplySelector } from "./savedReplySelector";
 
 type NewConversationInfo = {
@@ -101,15 +102,11 @@ const NewConversationModal = ({ mailboxSlug, conversationSlug, onSubmit }: Props
   const handleSavedReplySelect = useCallback(
     (savedReply: { slug: string; content: string; name: string }) => {
       try {
-        // Update the message content
-        setNewConversationInfo((info) => ({
-          ...info,
-          message: savedReply.content,
-        }));
-
-        // Update the editor content
+        // Insert the saved reply at the current cursor position
         if (editorRef.current?.editor) {
-          editorRef.current.editor.commands.setContent(savedReply.content);
+          // Strip HTML tags and insert as plain text to avoid block elements
+          const plainText = stripHtmlTags(savedReply.content);
+          editorRef.current.editor.chain().focus().insertContent(plainText + " ").run();
         }
 
         // Track usage
