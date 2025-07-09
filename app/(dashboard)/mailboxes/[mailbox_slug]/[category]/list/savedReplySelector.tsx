@@ -1,5 +1,8 @@
+import { isMacOS } from "@tiptap/core";
 import { ChevronDown, MessageSquareText as SavedReplyIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
+import { KeyboardShortcut } from "@/components/keyboardShortcut";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -41,6 +44,19 @@ export function SavedReplySelector({ savedReplies, onSelect }: SavedReplySelecto
     }
   }, [open]);
 
+  // Keyboard shortcut to toggle saved reply selector
+  useHotkeys(
+    "mod+slash",
+    (e) => {
+      e.preventDefault();
+      setOpen((prev) => !prev);
+    },
+    {
+      enableOnFormTags: ["INPUT", "TEXTAREA"],
+      enableOnContentEditable: true,
+    },
+  );
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -55,7 +71,10 @@ export function SavedReplySelector({ savedReplies, onSelect }: SavedReplySelecto
             <SavedReplyIcon className="h-4 w-4" />
             <span>Insert saved reply</span>
           </span>
-          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <div className="flex items-center gap-2">
+            <KeyboardShortcut className="text-muted-foreground">{isMacOS() ? "⌘/" : "Ctrl+/"}</KeyboardShortcut>
+            <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+          </div>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start" style={{ width: buttonRef.current?.offsetWidth }}>
