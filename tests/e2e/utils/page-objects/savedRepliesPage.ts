@@ -2,7 +2,6 @@ import { expect, Locator, Page } from "@playwright/test";
 import { BasePage } from "./basePage";
 
 export class SavedRepliesPage extends BasePage {
-  // Page elements
   readonly pageTitle: Locator;
   readonly searchInput: Locator;
   readonly newReplyButton: Locator;
@@ -11,8 +10,8 @@ export class SavedRepliesPage extends BasePage {
   readonly loadingSkeletons: Locator;
   readonly emptyState: Locator;
   readonly emptyStateText: Locator;
+  readonly floatingAddButton: Locator;
 
-  // Dialog elements
   readonly createDialog: Locator;
   readonly editDialog: Locator;
   readonly deleteDialog: Locator;
@@ -44,6 +43,9 @@ export class SavedRepliesPage extends BasePage {
     this.loadingSkeletons = page.locator(".animate-default-pulse");
     this.emptyState = page.locator('text="No saved replies yet"');
     this.emptyStateText = page.locator('text="No saved replies found matching your search"');
+    
+    // Add floating action button selector
+    this.floatingAddButton = page.locator('button.fixed.bottom-6.right-6');
 
     // Dialog elements
     this.createDialog = page.locator('[role="dialog"]:has-text("New saved reply")');
@@ -120,6 +122,10 @@ export class SavedRepliesPage extends BasePage {
 
   async clickCreateOneButton() {
     await this.createOneButton.click();
+  }
+  
+  async clickFloatingAddButton() {
+    await this.floatingAddButton.click();
   }
 
   async searchSavedReplies(searchTerm: string) {
@@ -248,14 +254,36 @@ export class SavedRepliesPage extends BasePage {
     }
   }
 
-  // Helper methods
   async openCreateDialog() {
-    const replyCount = await this.getSavedReplyCount();
-    if (replyCount === 0) {
+    await this.page.waitForTimeout(500);
+    
+    const emptyStateVisible = await this.emptyState.isVisible().catch(() => false);
+    
+    if (emptyStateVisible) {
       await this.clickCreateOneButton();
     } else {
-      await this.clickNewReplyButton();
+      const fabVisible = await this.floatingAddButton.isVisible().catch(() => false);
+      
+      if (fabVisible) {
+        await this.clickFloatingAddButton();
+      } else {
+        await Promise.race([
+          this.createOneButton.waitFor({ state: "visible", timeout: 5000 }),
+          this.floatingAddButton.waitFor({ state: "visible", timeout: 5000 }),
+        ]).catch(() => {
+          throw new Error("Neither 'Create one' nor floating add button found");
+        });
+        
+        if (await this.createOneButton.isVisible()) {
+          await this.clickCreateOneButton();
+        } else if (await this.floatingAddButton.isVisible()) {
+          await this.clickFloatingAddButton();
+        } else {
+          throw new Error("Could not find any button to create saved reply");
+        }
+      }
     }
+    
     await this.expectCreateDialogVisible();
   }
 
@@ -281,11 +309,9 @@ export class SavedRepliesPage extends BasePage {
   }
 
   async deleteSavedReply(index: number) {
-    // Click on the saved reply card to open edit modal
     await this.savedReplyCards.nth(index).click();
     await this.expectEditDialogVisible();
 
-    // Click delete button in the modal
     await this.clickDeleteButtonInModal();
     await this.expectDeleteDialogVisible();
     await this.confirmDelete();
@@ -301,8 +327,6 @@ export class SavedRepliesPage extends BasePage {
   }
 
   async expectClipboardContent(expectedContent: string) {
-    // Note: Direct clipboard testing is limited in Playwright
-    // This would typically be verified through manual testing or other means
     await this.waitForToast("Saved reply copied to clipboard");
   }
 }
