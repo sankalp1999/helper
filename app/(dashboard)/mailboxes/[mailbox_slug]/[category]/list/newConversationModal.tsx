@@ -103,7 +103,7 @@ const NewConversationModal = ({ mailboxSlug, conversationSlug, onSubmit }: Props
       try {
         if (editorRef.current?.editor) {
           const plainText = stripHtmlTags(savedReply.content);
-          
+
           editorRef.current.editor.commands.clearContent();
           const replacementSuccess = editorRef.current.editor.chain().focus().insertContent(plainText).run();
 
