@@ -20,6 +20,7 @@ import { parseEmailAddress } from "@/lib/emails";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
 import { RouterInputs } from "@/trpc";
 import { api } from "@/trpc/react";
+import { SavedReplySelector } from "./savedReplySelector";
 
 type NewConversationInfo = {
   to_email_address: string;
@@ -46,6 +47,14 @@ const NewConversationModal = ({ mailboxSlug, conversationSlug, onSubmit }: Props
 
   const { sendDisabled, sending, setSending } = useSendDisabled(newConversationInfo.message);
   const editorRef = useRef<TipTapEditorRef | null>(null);
+
+  // Fetch saved replies
+  const { data: savedReplies } = api.mailbox.savedReplies.list.useQuery(
+    { mailboxSlug, onlyActive: true },
+    { refetchOnWindowFocus: false, refetchOnMount: true },
+  );
+
+  const { mutate: incrementSavedReplyUsage } = api.mailbox.savedReplies.incrementUsage.useMutation();
 
   const handleSegment = useCallback(
     (segment: string) => {
@@ -88,6 +97,41 @@ const NewConversationModal = ({ mailboxSlug, conversationSlug, onSubmit }: Props
       setSending(false);
     },
   });
+
+  const handleSavedReplySelect = useCallback(
+    (savedReply: { slug: string; content: string; name: string }) => {
+      try {
+        // Update the message content
+        setNewConversationInfo((info) => ({
+          ...info,
+          message: savedReply.content,
+        }));
+
+        // Update the editor content
+        if (editorRef.current?.editor) {
+          editorRef.current.editor.commands.setContent(savedReply.content);
+        }
+
+        // Track usage
+        incrementSavedReplyUsage(
+          { slug: savedReply.slug, mailboxSlug },
+          {
+            onError: (error) => {
+              captureExceptionAndLog("Failed to track saved reply usage:", error);
+            },
+          },
+        );
+
+        toast.success(`Saved reply "${savedReply.name}" inserted`);
+      } catch (error) {
+        captureExceptionAndLog("Failed to insert saved reply content", {
+          extra: { error },
+        });
+        toast.error("Failed to insert saved reply");
+      }
+    },
+    [incrementSavedReplyUsage, mailboxSlug],
+  );
 
   const sendMessage = async () => {
     if (sendDisabled) return;
@@ -153,6 +197,9 @@ const NewConversationModal = ({ mailboxSlug, conversationSlug, onSubmit }: Props
           }
           onModEnter={sendMessage}
         />
+        {savedReplies && savedReplies.length > 0 && (
+          <SavedReplySelector savedReplies={savedReplies} onSelect={handleSavedReplySelect} />
+        )}
         <TipTapEditor
           ref={editorRef}
           className="max-h-[400px] overflow-y-auto no-scrollbar"
