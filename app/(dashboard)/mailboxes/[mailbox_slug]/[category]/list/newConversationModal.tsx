@@ -107,19 +107,21 @@ const NewConversationModal = ({ mailboxSlug, conversationSlug, onSubmit }: Props
           // Strip HTML tags and insert as plain text to avoid block elements
           const plainText = stripHtmlTags(savedReply.content);
           editorRef.current.editor.chain().focus().insertContent(plainText + " ").run();
-        }
 
-        // Track usage
-        incrementSavedReplyUsage(
-          { slug: savedReply.slug, mailboxSlug },
-          {
-            onError: (error) => {
-              captureExceptionAndLog("Failed to track saved reply usage:", error);
+          // Track usage only after successful insertion
+          incrementSavedReplyUsage(
+            { slug: savedReply.slug, mailboxSlug },
+            {
+              onError: (error) => {
+                captureExceptionAndLog("Failed to track saved reply usage:", error);
+              },
             },
-          },
-        );
+          );
 
-        toast.success(`Saved reply "${savedReply.name}" inserted`);
+          toast.success(`Saved reply "${savedReply.name}" inserted`);
+        } else {
+          toast.error("Failed to insert saved reply - editor not available");
+        }
       } catch (error) {
         captureExceptionAndLog("Failed to insert saved reply content", {
           extra: { error },
