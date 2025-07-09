@@ -14,6 +14,7 @@ import TipTapEditor, { type TipTapEditorRef } from "@/components/tiptap/editor";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { parseEmailList } from "@/components/utils/email";
 import { parseEmailAddress } from "@/lib/emails";
@@ -89,6 +90,51 @@ const NewConversationModal = ({ mailboxSlug, conversationSlug, onSubmit }: Props
     },
   });
 
+  const { data: savedReplies } = api.mailbox.savedReplies.list.useQuery(
+    { mailboxSlug, onlyActive: true },
+    { refetchOnWindowFocus: false, refetchOnMount: true },
+  );
+
+  const { mutate: incrementSavedReplyUsage } = api.mailbox.savedReplies.incrementUsage.useMutation();
+
+  const handleSavedReplySelect = useCallback(
+    (savedReplySlug: string) => {
+      const savedReply = savedReplies?.find((reply) => reply.slug === savedReplySlug);
+      if (!savedReply) return;
+
+      try {
+        setNewConversationInfo((info) => ({
+          ...info,
+          subject: savedReply.name,
+          message: savedReply.content,
+        }));
+
+        if (editorRef.current?.editor) {
+          editorRef.current.editor.commands.setContent(savedReply.content);
+        }
+
+        incrementSavedReplyUsage(
+          { slug: savedReply.slug, mailboxSlug },
+          {
+            onError: (error) => {
+              captureExceptionAndLog("Failed to track saved reply usage:", error);
+            },
+          },
+        );
+      } catch (error) {
+        captureExceptionAndLog("Failed to insert saved reply content", {
+          extra: {
+            error,
+          },
+        });
+        toast.error("Failed to insert saved reply", {
+          description: "Could not insert the saved reply content. Please try again.",
+        });
+      }
+    },
+    [savedReplies, incrementSavedReplyUsage, mailboxSlug, editorRef],
+  );
+
   const sendMessage = async () => {
     if (sendDisabled) return;
     stopRecording();
@@ -153,6 +199,22 @@ const NewConversationModal = ({ mailboxSlug, conversationSlug, onSubmit }: Props
           }
           onModEnter={sendMessage}
         />
+        {savedReplies && savedReplies.length > 0 && (
+          <div>
+            <Select onValueChange={handleSavedReplySelect}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a saved reply..." />
+              </SelectTrigger>
+              <SelectContent>
+                {savedReplies.map((savedReply) => (
+                  <SelectItem key={savedReply.slug} value={savedReply.slug}>
+                    {savedReply.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <TipTapEditor
           ref={editorRef}
           className="max-h-[400px] overflow-y-auto no-scrollbar"
