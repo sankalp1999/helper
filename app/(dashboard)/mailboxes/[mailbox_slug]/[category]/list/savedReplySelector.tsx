@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { stripHtmlTags } from "@/components/utils/html";
-import { cn } from "@/lib/utils";
 import { RouterOutputs } from "@/trpc";
 
 type SavedReply = RouterOutputs["mailbox"]["savedReplies"]["list"][number];
@@ -62,11 +61,7 @@ export function SavedReplySelector({ savedReplies, onSelect }: SavedReplySelecto
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start" style={{ width: buttonRef.current?.offsetWidth }}>
         <Command shouldFilter={false}>
-          <CommandInput
-            placeholder="Search saved replies..."
-            value={searchValue}
-            onValueChange={setSearchValue}
-          />
+          <CommandInput placeholder="Search saved replies..." value={searchValue} onValueChange={setSearchValue} />
           <CommandList>
             <CommandEmpty>No saved replies found.</CommandEmpty>
             <CommandGroup className="max-h-[300px] overflow-y-auto">
