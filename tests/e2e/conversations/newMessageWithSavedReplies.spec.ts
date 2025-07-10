@@ -95,53 +95,25 @@ test.describe("New Message with Saved Replies", () => {
     await page.keyboard.press("Escape");
   });
 
-  test("should open saved reply selector using keyboard shortcut", async ({ page, browserName }) => {
-    const newMessageButton = page.locator('button[class*="fixed"][class*="bottom-6"][class*="right-6"]');
-    await expect(newMessageButton).toBeVisible();
+  test("should open saved reply selector using keyboard shortcut", async ({ page }) => {
+    const newMessageButton = page.locator('button[class*="fixed"][class*="bottom-6"]');
     await newMessageButton.click();
 
     const modal = page.locator('[role="dialog"]');
     await expect(modal).toBeVisible();
 
-    // Wait for saved replies to load
-    await page.waitForTimeout(1000);
-
-    // First, verify the saved reply button is visible
     const savedReplyButton = page.locator('button:has-text("Use saved reply")');
     await expect(savedReplyButton).toBeVisible({ timeout: 10000 });
 
-    // Focus on the button or modal to ensure hotkey handler is active
-    await savedReplyButton.focus();
-    await page.waitForTimeout(300);
-
-    // Use the correct key combination based on OS and browser
-    const isMac = process.platform === 'darwin';
-    const modifierKey = isMac ? 'Meta' : 'Control';
+    const messageEditor = page.locator('[role="textbox"][contenteditable="true"]').last();
+    await messageEditor.click();
+    await messageEditor.focus();
     
-    // Press the keyboard shortcut
+    const modifierKey = process.platform === 'darwin' ? 'Meta' : 'Control';
     await page.keyboard.press(`${modifierKey}+/`);
-    await page.waitForTimeout(800);
 
-    // Check if the popover opened
     const searchInput = page.locator('input[placeholder="Search saved replies..."]');
-    
-    // If keyboard shortcut didn't work, click the button as fallback
-    const isSearchVisible = await searchInput.isVisible().catch(() => false);
-    if (!isSearchVisible) {
-      console.log("Keyboard shortcut didn't work, clicking button instead");
-      await savedReplyButton.click();
-      await page.waitForTimeout(500);
-    }
-
-    await expect(searchInput).toBeVisible();
-
-    const replyOptions = page.locator('[role="option"]');
-    await expect(replyOptions.first()).toBeVisible();
-
-    await takeDebugScreenshot(page, "keyboard-shortcut-saved-replies.png");
-
-    await page.keyboard.press("Escape");
-    await page.keyboard.press("Escape"); // Close modal too
+    await expect(searchInput).toBeVisible({ timeout: 2000 });
   });
 
   test("should populate subject field when saved reply is selected", async ({ page }) => {
