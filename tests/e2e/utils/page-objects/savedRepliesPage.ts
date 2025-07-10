@@ -267,19 +267,19 @@ export class SavedRepliesPage extends BasePage {
       if (fabVisible) {
         await this.clickFloatingAddButton();
       } else {
-        await Promise.race([
-          this.createOneButton.waitFor({ state: "visible", timeout: 5000 }),
-          this.floatingAddButton.waitFor({ state: "visible", timeout: 5000 }),
-        ]).catch(() => {
+        try {
+          await Promise.race([
+            this.createOneButton.waitFor({ state: "visible", timeout: 5000 }).then(() => "createOne"),
+            this.floatingAddButton.waitFor({ state: "visible", timeout: 5000 }).then(() => "floating"),
+          ]).then(async (buttonType) => {
+            if (buttonType === "createOne") {
+              await this.clickCreateOneButton();
+            } else {
+              await this.clickFloatingAddButton();
+            }
+          });
+        } catch {
           throw new Error("Neither 'Create one' nor floating add button found");
-        });
-        
-        if (await this.createOneButton.isVisible()) {
-          await this.clickCreateOneButton();
-        } else if (await this.floatingAddButton.isVisible()) {
-          await this.clickFloatingAddButton();
-        } else {
-          throw new Error("Could not find any button to create saved reply");
         }
       }
     }
