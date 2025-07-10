@@ -69,8 +69,8 @@ export class SavedRepliesPage extends BasePage {
   }
 
   // Navigation
-  async navigateToSavedReplies(mailboxSlug = "gumroad") {
-    await this.goto(`/mailboxes/${mailboxSlug}/saved-replies`);
+  async navigateToSavedReplies() {
+    await this.goto(`/saved-replies`);
     await this.waitForPageLoad();
   }
 

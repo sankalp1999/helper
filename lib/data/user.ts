@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import { cache } from "react";
 import { db } from "@/db/client";
 import { userProfiles } from "@/db/schema/userProfiles";
@@ -54,18 +54,27 @@ export const addUser = async (
   if (error) throw error;
 };
 
+export const banUser = async (userId: string) => {
+  await db
+    .update(userProfiles)
+    .set({
+      deletedAt: new Date(),
+    })
+    .where(eq(userProfiles.id, userId));
+};
+
 export const getUsersWithMailboxAccess = async (): Promise<UserWithMailboxAccessData[]> => {
   const users = await db
     .select({
       id: authUsers.id,
       email: authUsers.email,
-      rawMetadata: authUsers.user_metadata,
       displayName: userProfiles.displayName,
       permissions: userProfiles.permissions,
       access: userProfiles.access,
     })
     .from(authUsers)
-    .leftJoin(userProfiles, eq(authUsers.id, userProfiles.id));
+    .innerJoin(userProfiles, eq(authUsers.id, userProfiles.id))
+    .where(isNull(userProfiles.deletedAt));
 
   return users.map((user) => {
     const access = user.access ?? { role: "afk", keywords: [] };
@@ -73,7 +82,7 @@ export const getUsersWithMailboxAccess = async (): Promise<UserWithMailboxAccess
 
     return {
       id: user.id,
-      displayName: user.displayName || user.rawMetadata?.display_name || "",
+      displayName: user.displayName ?? "",
       email: user.email ?? undefined,
       role: access.role,
       keywords: access?.keywords ?? [],
@@ -88,6 +97,7 @@ export const updateUserMailboxData = async (
     displayName?: string;
     role?: UserRole;
     keywords?: MailboxAccess["keywords"];
+    permissions?: string;
   },
 ): Promise<UserWithMailboxAccessData> => {
   const supabase = createAdminClient();
@@ -127,6 +137,7 @@ export const updateUserMailboxData = async (
         role: updates.role || "afk",
         keywords: updates.keywords || [],
       },
+      permissions: updates.permissions,
     })
     .where(eq(userProfiles.id, updatedUser.id))
     .returning();
