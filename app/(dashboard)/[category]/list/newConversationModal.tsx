@@ -49,7 +49,7 @@ const NewConversationModal = ({ conversationSlug, onSubmit }: Props) => {
   const editorRef = useRef<TipTapEditorRef | null>(null);
 
   const { data: savedReplies } = api.mailbox.savedReplies.list.useQuery(
-    { mailboxSlug, onlyActive: true },
+    { onlyActive: true },
     { refetchOnWindowFocus: false, refetchOnMount: true },
   );
 
@@ -111,7 +111,7 @@ const NewConversationModal = ({ conversationSlug, onSubmit }: Props) => {
           }));
 
           incrementSavedReplyUsage(
-            { slug: savedReply.slug, mailboxSlug },
+            { slug: savedReply.slug },
             {
               onError: (error) => {
                 captureExceptionAndLog("Failed to track saved reply usage:", error);
@@ -130,7 +130,7 @@ const NewConversationModal = ({ conversationSlug, onSubmit }: Props) => {
         toast.error("Failed to apply saved reply");
       }
     },
-    [incrementSavedReplyUsage, mailboxSlug],
+    [incrementSavedReplyUsage],
   );
 
   const sendMessage = async () => {
