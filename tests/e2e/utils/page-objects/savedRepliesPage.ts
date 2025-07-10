@@ -267,7 +267,9 @@ export class SavedRepliesPage extends BasePage {
       if (fabVisible) {
         await this.clickFloatingAddButton();
       } else {
-        try {
+        // Track both buttons because UI shows different add buttons based on state:
+        // "Create one" appears in empty state, floating button appears when replies exist
+        try { 
           await Promise.race([
             this.createOneButton.waitFor({ state: "visible", timeout: 5000 }).then(() => "createOne"),
             this.floatingAddButton.waitFor({ state: "visible", timeout: 5000 }).then(() => "floating"),
