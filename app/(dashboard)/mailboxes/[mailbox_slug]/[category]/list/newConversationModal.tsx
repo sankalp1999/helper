@@ -15,8 +15,8 @@ import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { assertDefined } from "@/components/utils/assert";
 import { parseEmailList } from "@/components/utils/email";
-import { stripHtmlTags } from "@/components/utils/html";
 import { parseEmailAddress } from "@/lib/emails";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
 import { RouterInputs } from "@/trpc";
@@ -58,9 +58,8 @@ const NewConversationModal = ({ mailboxSlug, conversationSlug, onSubmit }: Props
 
   const handleSegment = useCallback(
     (segment: string) => {
-      if (editorRef.current?.editor) {
-        editorRef.current.editor.commands.insertContent(segment);
-      }
+      const editor = assertDefined(editorRef.current?.editor);
+      editor.commands.insertContent(segment);
     },
     [editorRef],
   );
@@ -101,34 +100,29 @@ const NewConversationModal = ({ mailboxSlug, conversationSlug, onSubmit }: Props
   const handleSavedReplySelect = useCallback(
     (savedReply: { slug: string; content: string; name: string }) => {
       try {
-        if (editorRef.current?.editor) {
-          const plainText = stripHtmlTags(savedReply.content);
+        const editor = assertDefined(editorRef.current?.editor);
+        editor.commands.clearContent();
+        const replacementSuccess = editor.chain().focus().insertContent(savedReply.content).run();
 
-          editorRef.current.editor.commands.clearContent();
-          const replacementSuccess = editorRef.current.editor.chain().focus().insertContent(plainText).run();
+        if (replacementSuccess) {
+          setNewConversationInfo((info) => ({
+            ...info,
+            subject: savedReply.name,
+            message: savedReply.content,
+          }));
 
-          if (replacementSuccess) {
-            setNewConversationInfo((info) => ({
-              ...info,
-              subject: savedReply.name,
-              message: plainText,
-            }));
-
-            incrementSavedReplyUsage(
-              { slug: savedReply.slug, mailboxSlug },
-              {
-                onError: (error) => {
-                  captureExceptionAndLog("Failed to track saved reply usage:", error);
-                },
+          incrementSavedReplyUsage(
+            { slug: savedReply.slug, mailboxSlug },
+            {
+              onError: (error) => {
+                captureExceptionAndLog("Failed to track saved reply usage:", error);
               },
-            );
+            },
+          );
 
-            toast.success(`Saved reply "${savedReply.name}" applied`);
-          } else {
-            toast.error("Failed to apply saved reply content");
-          }
+          toast.success(`Saved reply "${savedReply.name}" applied`);
         } else {
-          toast.error("Failed to apply saved reply - editor not available");
+          toast.error("Failed to apply saved reply content");
         }
       } catch (error) {
         captureExceptionAndLog("Failed to apply saved reply content", {

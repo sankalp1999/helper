@@ -52,7 +52,7 @@ test.describe("New Message with Saved Replies", () => {
     const modalTitle = page.locator('h2:has-text("New message")');
     await expect(modalTitle).toBeVisible();
 
-    const savedReplySelector = page.locator('button:has-text("Insert saved reply")');
+    const savedReplySelector = page.locator('button:has-text("Use saved reply")');
     await expect(savedReplySelector).toBeVisible();
 
     await savedReplySelector.click();
@@ -70,29 +70,6 @@ test.describe("New Message with Saved Replies", () => {
     
     const editorContent = await messageEditor.textContent();
     expect(editorContent?.length).toBeGreaterThan(0);
-
-    const toastSelectors = [
-      'text*="inserted"',
-      '[role="alert"]',
-      '[data-testid="toast"]',
-      '.toast'
-    ];
-    
-    let toastFound = false;
-    for (const selector of toastSelectors) {
-      try {
-        await page.locator(selector).waitFor({ state: "visible", timeout: 2000 });
-        toastFound = true;
-        break;
-      } catch {
-      }
-    }
-
-    if (toastFound) {
-      console.log("Success toast found");
-    } else {
-      console.log("Success toast not found but content was inserted");
-    }
 
     await takeDebugScreenshot(page, "saved-reply-functionality-working.png");
 
@@ -112,7 +89,7 @@ test.describe("New Message with Saved Replies", () => {
     const modal = page.locator('[role="dialog"]');
     await expect(modal).toBeVisible();
 
-    const savedReplySelector = page.locator('button:has-text("Insert saved reply")');
+    const savedReplySelector = page.locator('button:has-text("Use saved reply")');
     await expect(savedReplySelector).toBeVisible();
     
     await savedReplySelector.click();
@@ -138,7 +115,7 @@ test.describe("New Message with Saved Replies", () => {
     const newMessageButton = page.locator('button[class*="fixed"][class*="bottom-6"][class*="right-6"]');
     await newMessageButton.click();
 
-    const savedReplySelector = page.locator('button:has-text("Insert saved reply")');
+    const savedReplySelector = page.locator('button:has-text("Use saved reply")');
     await savedReplySelector.click();
 
     const replyOptions = page.locator('[role="option"]');
