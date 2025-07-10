@@ -1,37 +1,57 @@
 import { expect, test } from "@playwright/test";
 import { generateRandomString, takeDebugScreenshot } from "../utils/test-helpers";
 import { SavedRepliesPage } from "../utils/page-objects/savedRepliesPage";
+import { db } from "../../../db/client";
+import { savedReplies } from "../../../db/schema";
+import { eq, or } from "drizzle-orm";
 
 test.use({ storageState: "tests/e2e/.auth/user.json" });
 
 test.describe("New Message with Saved Replies", () => {
   let savedRepliesPage: SavedRepliesPage;
-  let testSavedReplyName: string;
+  let firstTestReplyName: string;
+  let secondTestReplyName: string;
+  let createdSavedReplies: string[] = [];
+
+  test.beforeAll(async ({ browser }) => {
+    // Create a new page for setup
+    const context = await browser.newContext({ storageState: "tests/e2e/.auth/user.json" });
+    const page = await context.newPage();
+    savedRepliesPage = new SavedRepliesPage(page);
+    
+    // Generate unique names for our test saved replies
+    const uniqueId = generateRandomString();
+    firstTestReplyName = `Test Reply Primary ${uniqueId}`;
+    secondTestReplyName = `Test Reply Secondary ${uniqueId}`;
+    createdSavedReplies = [firstTestReplyName, secondTestReplyName];
+    
+    try {
+      await savedRepliesPage.navigateToSavedReplies();
+      await page.waitForLoadState("networkidle", { timeout: 15000 });
+      await savedRepliesPage.expectPageVisible();
+      await page.waitForTimeout(1000);
+      
+      // Create first test saved reply
+      const firstContent = `Hello! Thank you for contacting us. How can I help you today? - ${uniqueId}`;
+      await savedRepliesPage.createSavedReply(firstTestReplyName, firstContent);
+      await page.waitForTimeout(1000);
+      
+      // Create second test saved reply
+      const secondContent = `This is a different saved reply for testing search functionality - ${uniqueId}`;
+      await savedRepliesPage.createSavedReply(secondTestReplyName, secondContent);
+      await page.waitForTimeout(1000);
+      
+    } catch (error) {
+      console.error("Failed to create test saved replies:", error);
+      await takeDebugScreenshot(page, "failed-saved-replies-setup.png");
+      throw error;
+    } finally {
+      await context.close();
+    }
+  });
 
   test.beforeEach(async ({ page }) => {
     savedRepliesPage = new SavedRepliesPage(page);
-    testSavedReplyName = `Test Reply ${generateRandomString()}`;
-    
-    try {
-      // First, create a saved reply
-      await savedRepliesPage.navigateToSavedReplies();
-      await page.waitForLoadState("networkidle", { timeout: 15000 });
-      
-      await savedRepliesPage.expectPageVisible();
-      
-      // Wait for the page to be fully loaded
-      await page.waitForTimeout(1000);
-      
-      const testContent = `Hello! Thank you for contacting us. How can I help you today? - ${generateRandomString()}`;
-      await savedRepliesPage.createSavedReply(testSavedReplyName, testContent);
-      
-      // Wait for saved reply to be created and indexed
-      await page.waitForTimeout(2000);
-    } catch (error) {
-      console.error("Failed to create test saved reply:", error);
-      await takeDebugScreenshot(page, "failed-saved-reply-creation.png");
-      throw error;
-    }
     
     // Navigate to conversations page with improved error handling
     let navigationSuccessful = false;
@@ -84,6 +104,20 @@ test.describe("New Message with Saved Replies", () => {
         }
         await page.waitForTimeout(3000);
       }
+    }
+  });
+
+  test.afterAll(async () => {
+    // Cleanup only the test saved replies by their specific names
+    try {
+      if (createdSavedReplies.length > 0) {
+        const nameConditions = createdSavedReplies.map(name => eq(savedReplies.name, name));
+        const result = await db.delete(savedReplies).where(or(...nameConditions));
+        console.log(`✅ Test cleanup completed - deleted ${result.rowCount || 0} test saved replies`);
+      }
+    } catch (error) {
+      console.warn("Failed during saved replies cleanup:", error);
+      // Don't fail the test suite due to cleanup issues
     }
   });
 
@@ -193,7 +227,7 @@ test.describe("New Message with Saved Replies", () => {
     // Search for the specific test saved reply
     const searchInput = page.getByPlaceholder('Search saved replies...');
     await expect(searchInput).toBeVisible({ timeout: 5000 });
-    await searchInput.fill(testSavedReplyName);
+    await searchInput.fill(firstTestReplyName);
     await page.waitForTimeout(800);
 
     // Select the first (and should be only) option
@@ -202,7 +236,7 @@ test.describe("New Message with Saved Replies", () => {
     
     // Verify we found the correct saved reply
     const firstOptionText = await replyOptions.first().textContent();
-    expect(firstOptionText).toContain(testSavedReplyName);
+    expect(firstOptionText).toContain(firstTestReplyName);
     
     await replyOptions.first().click();
 
@@ -211,7 +245,7 @@ test.describe("New Message with Saved Replies", () => {
 
     // Check that subject is populated
     const subjectValue = await subjectInput.inputValue();
-    expect(subjectValue).toBe(testSavedReplyName);
+    expect(subjectValue).toBe(firstTestReplyName);
 
     // Check that message content is populated
     const messageEditor = modal.locator('[role="textbox"][contenteditable="true"]');
@@ -274,20 +308,6 @@ test.describe("New Message with Saved Replies", () => {
     // Set a longer default timeout for this test
     test.setTimeout(60000);
     
-    const secondReplyName = `Different Reply ${generateRandomString()}`;
-    const secondReplyContent = `This is a different saved reply - ${generateRandomString()}`;
-    
-    // Create second saved reply
-    try {
-      await savedRepliesPage.navigateToSavedReplies();
-      await page.waitForTimeout(1000);
-      await savedRepliesPage.createSavedReply(secondReplyName, secondReplyContent);
-      await page.waitForTimeout(2000); // Wait for second reply to be saved
-    } catch (error) {
-      console.error("Failed to create second saved reply:", error);
-      throw error;
-    }
-    
     // Create a new page to avoid navigation issues
     const newPage = await context.newPage();
     
@@ -327,18 +347,25 @@ test.describe("New Message with Saved Replies", () => {
       const initialCount = await replyOptions.count();
       expect(initialCount).toBeGreaterThanOrEqual(2);
 
-      // Search for "Test Reply"
+      // Search for "Test Reply" which should match both our pre-created saved replies
       const searchInput = newPage.getByPlaceholder('Search saved replies...');
       await searchInput.fill("Test Reply");
       await newPage.waitForTimeout(800);
 
-      // Check filtered results
+      // Check filtered results - should find both our test saved replies
       const filteredOptions = newPage.locator('[role="option"]');
       await expect(filteredOptions.first()).toBeVisible();
       
-      // Verify the first option contains "Test Reply"
-      const optionText = await filteredOptions.first().textContent();
-      expect(optionText).toContain("Test Reply");
+      // Verify we have both saved replies in the results
+      const filteredCount = await filteredOptions.count();
+      expect(filteredCount).toBeGreaterThanOrEqual(2); // Should find both our test saved replies
+      
+      // Verify the options contain our test saved replies
+      const optionTexts = await filteredOptions.allTextContents();
+      const hasFirstReply = optionTexts.some(text => text.includes("Test Reply Primary"));
+      const hasSecondReply = optionTexts.some(text => text.includes("Test Reply Secondary"));
+      expect(hasFirstReply).toBe(true);
+      expect(hasSecondReply).toBe(true);
 
       await takeDebugScreenshot(newPage, "saved-reply-search-filtering.png");
 

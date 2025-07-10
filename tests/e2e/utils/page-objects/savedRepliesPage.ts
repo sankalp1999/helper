@@ -36,7 +36,7 @@ export class SavedRepliesPage extends BasePage {
 
     // Page elements
     this.pageTitle = page.locator('h1:has-text("Saved replies")');
-    this.searchInput = page.locator('input[placeholder="Search saved replies..."]');
+    this.searchInput = page.locator('input[placeholder="Search saved replies..."]').first();
     this.newReplyButton = page.locator('button:has-text("New saved reply")');
     this.createOneButton = page.locator('button:has-text("Create one")');
     this.savedReplyCards = page.locator('[data-testid="saved-reply-card"]');
