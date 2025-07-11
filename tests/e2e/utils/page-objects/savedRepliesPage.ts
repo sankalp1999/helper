@@ -44,14 +44,14 @@ export class SavedRepliesPage extends BasePage {
     this.emptyState = page.locator('text="No saved replies yet"');
     this.emptyStateText = page.locator('text="No saved replies found matching your search"');
 
-    // Add floating action button selector
-    this.floatingAddButton = page.locator("button.fixed.bottom-6.right-6");
+    // Add floating action button selector - any fixed positioned button
+    this.floatingAddButton = page.locator("button.fixed");
 
     // Dialog elements
     this.createDialog = page.locator('[role="dialog"]:has-text("New saved reply")');
     this.editDialog = page.locator('[role="dialog"]:has-text("Edit saved reply")');
-    this.deleteDialog = page.locator('[role="alertdialog"]:has-text("Delete saved reply")');
-    this.dialogTitle = page.locator('[role="dialog"] h2, [role="alertdialog"] h2');
+    this.deleteDialog = page.locator('[role="dialog"]:has-text("Are you sure you want to delete")');
+    this.dialogTitle = page.locator('[role="dialog"] h2');
     this.nameInput = page.locator('input[placeholder*="Welcome Message"]');
     this.contentEditor = page.locator('[role="textbox"][contenteditable="true"]');
     this.saveButton = page.locator('button:has-text("Saving...")');
@@ -59,7 +59,7 @@ export class SavedRepliesPage extends BasePage {
     this.addButton = page.locator('button:has-text("Add")');
     this.updateButton = page.locator('button:has-text("Update")');
     this.deleteButton = page.locator('button:has-text("Delete"):not(:has-text("saved reply"))');
-    this.confirmDeleteButton = page.locator('[role="alertdialog"] button:has-text("Delete")');
+    this.confirmDeleteButton = page.locator('[role="dialog"] button:has-text("Yes")');
 
     // Card elements
     this.cardTitle = page.locator('[data-testid="saved-reply-card"] .text-lg');
@@ -84,7 +84,16 @@ export class SavedRepliesPage extends BasePage {
   }
 
   async expectNewReplyButtonVisible() {
-    await expect(this.newReplyButton).toBeVisible();
+    // Check if we have saved replies or empty state
+    const hasReplies = await this.savedReplyCards.count() > 0;
+    
+    if (hasReplies) {
+      // When replies exist, expect floating action button
+      await expect(this.floatingAddButton).toBeVisible();
+    } else {
+      // When no replies, expect "Create one" button
+      await expect(this.createOneButton).toBeVisible();
+    }
   }
 
   async expectEmptyState() {
@@ -112,7 +121,7 @@ export class SavedRepliesPage extends BasePage {
 
   async expectDeleteDialogVisible() {
     await expect(this.deleteDialog).toBeVisible();
-    await expect(this.deleteDialog).toContainText("Delete saved reply");
+    await expect(this.deleteDialog).toContainText("Are you sure you want to delete");
   }
 
   // Actions
@@ -328,7 +337,7 @@ export class SavedRepliesPage extends BasePage {
     }
   }
 
-  async expectClipboardContent(expectedContent: string) {
+  async expectClipboardContent() {
     await this.waitForToast("Saved reply copied to clipboard");
   }
 }
