@@ -43,9 +43,9 @@ export class SavedRepliesPage extends BasePage {
     this.loadingSkeletons = page.locator(".animate-default-pulse");
     this.emptyState = page.locator('text="No saved replies yet"');
     this.emptyStateText = page.locator('text="No saved replies found matching your search"');
-    
+
     // Add floating action button selector
-    this.floatingAddButton = page.locator('button.fixed.bottom-6.right-6');
+    this.floatingAddButton = page.locator("button.fixed.bottom-6.right-6");
 
     // Dialog elements
     this.createDialog = page.locator('[role="dialog"]:has-text("New saved reply")');
@@ -123,7 +123,7 @@ export class SavedRepliesPage extends BasePage {
   async clickCreateOneButton() {
     await this.createOneButton.click();
   }
-  
+
   async clickFloatingAddButton() {
     await this.floatingAddButton.click();
   }
@@ -256,20 +256,20 @@ export class SavedRepliesPage extends BasePage {
 
   async openCreateDialog() {
     await this.page.waitForTimeout(500);
-    
+
     const emptyStateVisible = await this.emptyState.isVisible().catch(() => false);
-    
+
     if (emptyStateVisible) {
       await this.clickCreateOneButton();
     } else {
       const fabVisible = await this.floatingAddButton.isVisible().catch(() => false);
-      
+
       if (fabVisible) {
         await this.clickFloatingAddButton();
       } else {
         // Track both buttons because UI shows different add buttons based on state:
         // "Create one" appears in empty state, floating button appears when replies exist
-        try { 
+        try {
           await Promise.race([
             this.createOneButton.waitFor({ state: "visible", timeout: 5000 }).then(() => "createOne"),
             this.floatingAddButton.waitFor({ state: "visible", timeout: 5000 }).then(() => "floating"),
@@ -285,7 +285,7 @@ export class SavedRepliesPage extends BasePage {
         }
       }
     }
-    
+
     await this.expectCreateDialogVisible();
   }
 

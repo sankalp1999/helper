@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { generateRandomString, takeDebugScreenshot } from "../utils/test-helpers";
-import { SavedRepliesPage } from "../utils/page-objects/savedRepliesPage";
+import { eq, or } from "drizzle-orm";
 import { db } from "../../../db/client";
 import { savedReplies } from "../../../db/schema";
-import { eq, or } from "drizzle-orm";
+import { SavedRepliesPage } from "../utils/page-objects/savedRepliesPage";
+import { generateRandomString, takeDebugScreenshot } from "../utils/test-helpers";
 
 test.use({ storageState: "tests/e2e/.auth/user.json" });
 
@@ -18,29 +18,28 @@ test.describe("New Message with Saved Replies", () => {
     const context = await browser.newContext({ storageState: "tests/e2e/.auth/user.json" });
     const page = await context.newPage();
     savedRepliesPage = new SavedRepliesPage(page);
-    
+
     // Generate unique names for our test saved replies
     const uniqueId = generateRandomString();
     firstTestReplyName = `Test Reply Primary ${uniqueId}`;
     secondTestReplyName = `Test Reply Secondary ${uniqueId}`;
     createdSavedReplies = [firstTestReplyName, secondTestReplyName];
-    
+
     try {
       await savedRepliesPage.navigateToSavedReplies();
       await page.waitForLoadState("networkidle", { timeout: 15000 });
       await savedRepliesPage.expectPageVisible();
       await page.waitForTimeout(1000);
-      
+
       // Create first test saved reply
       const firstContent = `Hello! Thank you for contacting us. How can I help you today? - ${uniqueId}`;
       await savedRepliesPage.createSavedReply(firstTestReplyName, firstContent);
       await page.waitForTimeout(1000);
-      
+
       // Create second test saved reply
       const secondContent = `This is a different saved reply for testing search functionality - ${uniqueId}`;
       await savedRepliesPage.createSavedReply(secondTestReplyName, secondContent);
       await page.waitForTimeout(1000);
-      
     } catch (error) {
       console.error("Failed to create test saved replies:", error);
       await takeDebugScreenshot(page, "failed-saved-replies-setup.png");
@@ -52,7 +51,7 @@ test.describe("New Message with Saved Replies", () => {
 
   test.beforeEach(async ({ page }) => {
     savedRepliesPage = new SavedRepliesPage(page);
-    
+
     // Navigate to conversations page with improved error handling
     let navigationSuccessful = false;
     let retries = 0;
@@ -60,29 +59,29 @@ test.describe("New Message with Saved Replies", () => {
 
     while (!navigationSuccessful && retries < maxRetries) {
       try {
-        await page.goto("/mailboxes/gumroad/mine", { 
+        await page.goto("/mailboxes/gumroad/mine", {
           timeout: 30000,
-          waitUntil: 'domcontentloaded' 
+          waitUntil: "domcontentloaded",
         });
-        
+
         // Wait for any loading states to complete
         await page.waitForLoadState("networkidle", { timeout: 10000 }).catch(() => {
           // Continue even if networkidle times out
         });
-        
+
         // Wait for the new message button - use multiple possible selectors
         const buttonSelectors = [
           'button[aria-label="New message"]',
-          'button:has(svg.lucide-send)',
-          '.fixed.bottom-6.right-6 button'
+          "button:has(svg.lucide-send)",
+          ".fixed.bottom-6.right-6 button",
         ];
-        
+
         let buttonFound = false;
         for (const selector of buttonSelectors) {
           try {
-            await page.waitForSelector(selector, { 
+            await page.waitForSelector(selector, {
               timeout: 5000,
-              state: 'visible' 
+              state: "visible",
             });
             buttonFound = true;
             break;
@@ -90,7 +89,7 @@ test.describe("New Message with Saved Replies", () => {
             // Try next selector
           }
         }
-        
+
         if (buttonFound) {
           navigationSuccessful = true;
         } else {
@@ -111,7 +110,7 @@ test.describe("New Message with Saved Replies", () => {
     // Cleanup only the test saved replies by their specific names
     try {
       if (createdSavedReplies.length > 0) {
-        const nameConditions = createdSavedReplies.map(name => eq(savedReplies.name, name));
+        const nameConditions = createdSavedReplies.map((name) => eq(savedReplies.name, name));
         const result = await db.delete(savedReplies).where(or(...nameConditions));
         console.log(`✅ Test cleanup completed - deleted ${result.rowCount || 0} test saved replies`);
       }
@@ -123,14 +122,16 @@ test.describe("New Message with Saved Replies", () => {
 
   test("should show saved reply selector in new message modal and insert content", async ({ page }) => {
     // Use multiple selectors for the new message button
-    const newMessageButton = page.locator('button[aria-label="New message"]').or(page.locator('.fixed.bottom-6.right-6 button'));
+    const newMessageButton = page
+      .locator('button[aria-label="New message"]')
+      .or(page.locator(".fixed.bottom-6.right-6 button"));
     await expect(newMessageButton).toBeVisible({ timeout: 10000 });
     await newMessageButton.click();
 
     // Wait for modal to open
-    const modal = page.getByRole('dialog');
+    const modal = page.getByRole("dialog");
     await expect(modal).toBeVisible({ timeout: 5000 });
-    
+
     // Verify modal title
     const modalTitle = modal.locator('h2:has-text("New message")');
     await expect(modalTitle).toBeVisible();
@@ -146,7 +147,7 @@ test.describe("New Message with Saved Replies", () => {
     await page.waitForTimeout(500);
 
     // Wait for the popover content
-    const searchInput = page.getByPlaceholder('Search saved replies...');
+    const searchInput = page.getByPlaceholder("Search saved replies...");
     await expect(searchInput).toBeVisible({ timeout: 5000 });
 
     // Look for command items instead of options
@@ -172,12 +173,14 @@ test.describe("New Message with Saved Replies", () => {
 
   test("should open saved reply selector using keyboard shortcut", async ({ page }) => {
     // Use multiple selectors for the new message button
-    const newMessageButton = page.locator('button[aria-label="New message"]').or(page.locator('.fixed.bottom-6.right-6 button'));
+    const newMessageButton = page
+      .locator('button[aria-label="New message"]')
+      .or(page.locator(".fixed.bottom-6.right-6 button"));
     await expect(newMessageButton).toBeVisible({ timeout: 10000 });
     await newMessageButton.click();
 
     // Wait for modal
-    const modal = page.getByRole('dialog');
+    const modal = page.getByRole("dialog");
     await expect(modal).toBeVisible({ timeout: 5000 });
 
     // Wait for saved reply button to be visible
@@ -188,24 +191,26 @@ test.describe("New Message with Saved Replies", () => {
     const messageEditor = modal.locator('[role="textbox"][contenteditable="true"]');
     await messageEditor.click();
     await messageEditor.focus();
-    
+
     // Use the keyboard shortcut
-    const modifierKey = process.platform === 'darwin' ? 'Meta' : 'Control';
+    const modifierKey = process.platform === "darwin" ? "Meta" : "Control";
     await page.keyboard.press(`${modifierKey}+/`);
 
     // Check that the search input appears
-    const searchInput = page.getByPlaceholder('Search saved replies...');
+    const searchInput = page.getByPlaceholder("Search saved replies...");
     await expect(searchInput).toBeVisible({ timeout: 5000 });
   });
 
   test("should populate subject field when saved reply is selected", async ({ page }) => {
     // Use multiple selectors for the new message button
-    const newMessageButton = page.locator('button[aria-label="New message"]').or(page.locator('.fixed.bottom-6.right-6 button'));
+    const newMessageButton = page
+      .locator('button[aria-label="New message"]')
+      .or(page.locator(".fixed.bottom-6.right-6 button"));
     await expect(newMessageButton).toBeVisible({ timeout: 10000 });
     await newMessageButton.click();
 
     // Wait for modal
-    const modal = page.getByRole('dialog');
+    const modal = page.getByRole("dialog");
     await expect(modal).toBeVisible({ timeout: 5000 });
 
     // Check subject input is initially empty
@@ -220,12 +225,12 @@ test.describe("New Message with Saved Replies", () => {
     const savedReplySelector = modal.locator('button[role="combobox"]:has-text("Use saved reply")');
     await expect(savedReplySelector).toBeVisible({ timeout: 10000 });
     await savedReplySelector.click();
-    
+
     // Wait for popover
     await page.waitForTimeout(500);
 
     // Search for the specific test saved reply
-    const searchInput = page.getByPlaceholder('Search saved replies...');
+    const searchInput = page.getByPlaceholder("Search saved replies...");
     await expect(searchInput).toBeVisible({ timeout: 5000 });
     await searchInput.fill(firstTestReplyName);
     await page.waitForTimeout(800);
@@ -233,11 +238,11 @@ test.describe("New Message with Saved Replies", () => {
     // Select the first (and should be only) option
     const replyOptions = page.locator('[role="option"]');
     await expect(replyOptions.first()).toBeVisible({ timeout: 5000 });
-    
+
     // Verify we found the correct saved reply
     const firstOptionText = await replyOptions.first().textContent();
     expect(firstOptionText).toContain(firstTestReplyName);
-    
+
     await replyOptions.first().click();
 
     // Wait for the form to update
@@ -263,8 +268,8 @@ test.describe("New Message with Saved Replies", () => {
     await page.setViewportSize({ width: 375, height: 667 });
 
     // Navigate to the page
-    await page.goto("/mailboxes/gumroad/mine", { waitUntil: 'domcontentloaded' });
-    
+    await page.goto("/mailboxes/gumroad/mine", { waitUntil: "domcontentloaded" });
+
     // Wait for network to stabilize
     await page.waitForLoadState("networkidle", { timeout: 10000 }).catch(() => {
       // Continue even if networkidle times out
@@ -274,12 +279,14 @@ test.describe("New Message with Saved Replies", () => {
     await page.waitForTimeout(2000);
 
     // Use multiple selectors for the new message button
-    const newMessageButton = page.locator('button[aria-label="New message"]').or(page.locator('.fixed.bottom-6.right-6 button'));
+    const newMessageButton = page
+      .locator('button[aria-label="New message"]')
+      .or(page.locator(".fixed.bottom-6.right-6 button"));
     await expect(newMessageButton).toBeVisible({ timeout: 15000 });
     await newMessageButton.click();
 
     // Wait for modal
-    const modal = page.getByRole('dialog');
+    const modal = page.getByRole("dialog");
     await expect(modal).toBeVisible({ timeout: 5000 });
 
     // Wait for modal content to load on mobile
@@ -287,15 +294,15 @@ test.describe("New Message with Saved Replies", () => {
 
     // Look for saved reply selector
     const savedReplySelector = modal.locator('button[role="combobox"]:has-text("Use saved reply")');
-    
+
     // Wait longer for mobile rendering
     await expect(savedReplySelector).toBeVisible({ timeout: 15000 });
-    
+
     await savedReplySelector.click();
     await page.waitForTimeout(800);
-    
+
     // Check search input appears
-    const searchInput = page.getByPlaceholder('Search saved replies...');
+    const searchInput = page.getByPlaceholder("Search saved replies...");
     await expect(searchInput).toBeVisible({ timeout: 5000 });
 
     await takeDebugScreenshot(page, "new-message-mobile-saved-replies.png");
@@ -307,31 +314,33 @@ test.describe("New Message with Saved Replies", () => {
   test("should filter saved replies when searching", async ({ page, context }) => {
     // Set a longer default timeout for this test
     test.setTimeout(60000);
-    
+
     // Create a new page to avoid navigation issues
     const newPage = await context.newPage();
-    
+
     try {
-      await newPage.goto("/mailboxes/gumroad/mine", { 
+      await newPage.goto("/mailboxes/gumroad/mine", {
         timeout: 30000,
-        waitUntil: 'domcontentloaded' 
+        waitUntil: "domcontentloaded",
       });
-      
+
       // Wait for network to stabilize
       await newPage.waitForLoadState("networkidle", { timeout: 10000 }).catch(() => {
         // Continue even if networkidle times out
       });
-      
+
       // Wait for the page to be fully loaded
       await newPage.waitForTimeout(2000);
 
       // Use multiple selectors for the new message button
-      const newMessageButton = newPage.locator('button[aria-label="New message"]').or(newPage.locator('.fixed.bottom-6.right-6 button'));
+      const newMessageButton = newPage
+        .locator('button[aria-label="New message"]')
+        .or(newPage.locator(".fixed.bottom-6.right-6 button"));
       await expect(newMessageButton).toBeVisible({ timeout: 15000 });
       await newMessageButton.click();
 
       // Wait for modal and content to load
-      const modal = newPage.getByRole('dialog');
+      const modal = newPage.getByRole("dialog");
       await expect(modal).toBeVisible({ timeout: 5000 });
       await newPage.waitForTimeout(1500);
 
@@ -348,22 +357,22 @@ test.describe("New Message with Saved Replies", () => {
       expect(initialCount).toBeGreaterThanOrEqual(2);
 
       // Search for "Test Reply" which should match both our pre-created saved replies
-      const searchInput = newPage.getByPlaceholder('Search saved replies...');
+      const searchInput = newPage.getByPlaceholder("Search saved replies...");
       await searchInput.fill("Test Reply");
       await newPage.waitForTimeout(800);
 
       // Check filtered results - should find both our test saved replies
       const filteredOptions = newPage.locator('[role="option"]');
       await expect(filteredOptions.first()).toBeVisible();
-      
+
       // Verify we have both saved replies in the results
       const filteredCount = await filteredOptions.count();
       expect(filteredCount).toBeGreaterThanOrEqual(2); // Should find both our test saved replies
-      
+
       // Verify the options contain our test saved replies
       const optionTexts = await filteredOptions.allTextContents();
-      const hasFirstReply = optionTexts.some(text => text.includes("Test Reply Primary"));
-      const hasSecondReply = optionTexts.some(text => text.includes("Test Reply Secondary"));
+      const hasFirstReply = optionTexts.some((text) => text.includes("Test Reply Primary"));
+      const hasSecondReply = optionTexts.some((text) => text.includes("Test Reply Secondary"));
       expect(hasFirstReply).toBe(true);
       expect(hasSecondReply).toBe(true);
 
@@ -375,4 +384,4 @@ test.describe("New Message with Saved Replies", () => {
       await newPage.close();
     }
   });
-}); 
+});
