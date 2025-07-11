@@ -59,7 +59,7 @@ test.describe("New Message with Saved Replies", () => {
 
     while (!navigationSuccessful && retries < maxRetries) {
       try {
-        await page.goto("/mailboxes/gumroad/mine", {
+        await page.goto("/mine", {
           timeout: 30000,
           waitUntil: "domcontentloaded",
         });
@@ -266,7 +266,7 @@ test.describe("New Message with Saved Replies", () => {
     await page.setViewportSize({ width: 375, height: 667 });
 
     // Navigate to the page
-    await page.goto("/mailboxes/gumroad/mine", { waitUntil: "domcontentloaded" });
+    await page.goto("/mine", { waitUntil: "domcontentloaded" });
 
     // Wait for network to stabilize
     await page.waitForLoadState("networkidle", { timeout: 10000 }).catch(() => {
@@ -317,7 +317,7 @@ test.describe("New Message with Saved Replies", () => {
     const newPage = await context.newPage();
 
     try {
-      await newPage.goto("/mailboxes/gumroad/mine", {
+      await newPage.goto("/mine", {
         timeout: 30000,
         waitUntil: "domcontentloaded",
       });
