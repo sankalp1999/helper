@@ -2,7 +2,6 @@
   "name": "@helperai/react",
   "version": "0.6.0",
   "description": "React/Next.js integration for Helper chat widget",
-  "type": "module",
   "sideEffects": false,
   "files": [
     "dist",

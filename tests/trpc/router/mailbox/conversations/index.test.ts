@@ -93,7 +93,7 @@ describe("conversationsRouter", () => {
       });
       // No platformCustomer for no-value@example.com
       const caller = createCaller(createTestTRPCContext(user));
-      const result = await caller.mailbox.conversations.list({ ...defaultParams });
+      const result = await caller.mailbox.conversations.list({ ...defaultParams, status: ["open"] });
       expect(result.conversations.map((c) => c.emailFrom)).toEqual([
         "high@example.com",
         "low@example.com",
