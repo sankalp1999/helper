@@ -98,21 +98,19 @@ test.describe("Saved Replies Management", () => {
       // Wait for UI to update
       await page.waitForTimeout(1000);
 
-      // Verify the new reply appears - use more flexible assertion
+      // No longer rely on overall count – instead verify our specific reply exists
       const newCount = await savedRepliesPage.getSavedReplyCount();
-      expect(newCount).toBeGreaterThanOrEqual(initialCount);
 
-      // Verify our specific reply was created by checking if we can find it
       let foundReply = false;
-      for (let i = 0; i < Math.min(newCount, 10); i++) {
+      for (let i = 0; i < newCount; i++) {
         try {
           const title = await savedRepliesPage.getSavedReplyTitle(i);
           if (title.includes(testName)) {
             foundReply = true;
             break;
           }
-        } catch (error) {
-          // Continue checking other replies
+        } catch {
+          // ignore and keep checking
         }
       }
       expect(foundReply).toBe(true);
@@ -176,33 +174,64 @@ test.describe("Saved Replies Management", () => {
   });
 
   test("should edit a saved reply", async ({ page }) => {
+    const testName = `Edit Target ${generateRandomString()}`;
+    const testContent = `Original content ${generateRandomString()}`;
+    const updatedTitle = `Updated ${generateRandomString()}`;
+    const updatedContent = `Updated content - ${generateRandomString()}`;
+
+    // Create a reply specifically for this edit test
+    await savedRepliesPage.createSavedReply(testName, testContent);
+    await page.waitForTimeout(1000);
+
     const replyCount = await savedRepliesPage.getSavedReplyCount();
-
-    if (replyCount > 0) {
-      const originalTitle = await savedRepliesPage.getSavedReplyTitle(0);
-      const newTitle = `Updated ${generateRandomString()}`;
-      const newContent = `Updated content - ${generateRandomString()}`;
-
-      await savedRepliesPage.editSavedReply(0, newTitle, newContent);
-
-      // Verify the reply was updated
-      const updatedTitle = await savedRepliesPage.getSavedReplyTitle(0);
-      expect(updatedTitle).not.toBe(originalTitle);
-      expect(updatedTitle).toContain(newTitle);
-
-      await takeDebugScreenshot(page, "saved-reply-edited.png");
+    let targetIndex = -1;
+    for (let i = 0; i < replyCount; i++) {
+      try {
+        const title = await savedRepliesPage.getSavedReplyTitle(i);
+        if (title.includes(testName)) {
+          targetIndex = i;
+          break;
+        }
+      } catch {
+        // continue searching
+      }
     }
+    expect(targetIndex).toBeGreaterThanOrEqual(0);
+
+    await savedRepliesPage.editSavedReply(targetIndex, updatedTitle, updatedContent);
+
+    const updatedTitleActual = await savedRepliesPage.getSavedReplyTitle(targetIndex);
+    expect(updatedTitleActual).toContain(updatedTitle);
+
+    await takeDebugScreenshot(page, "saved-reply-edited.png");
   });
 
   test("should copy saved reply to clipboard", async ({ page }) => {
+    const testName = `Copy Target ${generateRandomString()}`;
+    const testContent = `Copy content ${generateRandomString()}`;
+
+    await savedRepliesPage.createSavedReply(testName, testContent);
+    await page.waitForTimeout(1000);
+
     const replyCount = await savedRepliesPage.getSavedReplyCount();
-
-    if (replyCount > 0) {
-      await savedRepliesPage.clickCopyButton(0);
-      await savedRepliesPage.expectClipboardContent(""); // Content validation is limited in E2E
-
-      await takeDebugScreenshot(page, "saved-reply-copied.png");
+    let targetIndex = -1;
+    for (let i = 0; i < replyCount; i++) {
+      try {
+        const title = await savedRepliesPage.getSavedReplyTitle(i);
+        if (title.includes(testName)) {
+          targetIndex = i;
+          break;
+        }
+      } catch {
+        // continue searching
+      }
     }
+    expect(targetIndex).toBeGreaterThanOrEqual(0);
+
+    await savedRepliesPage.clickCopyButton(targetIndex);
+    await savedRepliesPage.expectClipboardContent();
+
+    await takeDebugScreenshot(page, "saved-reply-copied.png");
   });
 
   test("should delete a saved reply with confirmation", async ({ page }) => {
