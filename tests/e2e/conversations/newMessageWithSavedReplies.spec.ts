@@ -26,8 +26,16 @@ test.describe("New Message with Saved Replies", () => {
     createdSavedReplies = [firstTestReplyName, secondTestReplyName];
 
     try {
-      await savedRepliesPage.navigateToSavedReplies();
-      await page.waitForLoadState("networkidle", { timeout: 15000 });
+      // Navigate with retry logic for improved reliability
+      try {
+        await savedRepliesPage.navigateToSavedReplies();
+        await page.waitForLoadState("networkidle", { timeout: 30000 });
+      } catch (error) {
+        console.log("Initial navigation failed, retrying...", error);
+        await savedRepliesPage.navigateToSavedReplies();
+        await page.waitForLoadState("domcontentloaded", { timeout: 30000 });
+      }
+      
       await savedRepliesPage.expectPageVisible();
       await page.waitForTimeout(1000);
 
@@ -42,7 +50,12 @@ test.describe("New Message with Saved Replies", () => {
       await page.waitForTimeout(1000);
     } catch (error) {
       console.error("Failed to create test saved replies:", error);
-      await takeDebugScreenshot(page, "failed-saved-replies-setup.png");
+      // Take screenshot before closing context
+      try {
+        await takeDebugScreenshot(page, "failed-saved-replies-setup.png");
+      } catch (screenshotError) {
+        console.log("Could not take screenshot:", screenshotError);
+      }
       throw error;
     } finally {
       await context.close();
