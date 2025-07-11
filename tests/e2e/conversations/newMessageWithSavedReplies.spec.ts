@@ -136,19 +136,18 @@ test.describe("New Message with Saved Replies", () => {
     const modalTitle = modal.locator('h2:has-text("New message")');
     await expect(modalTitle).toBeVisible();
 
-    // Wait for the modal content to fully load
-    await page.waitForTimeout(1500);
+    
+    await expect(modal.locator('button[role="combobox"]')).toBeVisible({ timeout: 15000 });
 
     // Look for the saved reply selector button - it contains both icon and text
-    const savedReplySelector = modal.locator('button[role="combobox"]:has-text("Use saved reply")');
-    await expect(savedReplySelector).toBeVisible({ timeout: 10000 });
+    const savedReplySelector = modal.locator('button[role="combobox"]');
+    await expect(savedReplySelector).toBeVisible();
 
     await savedReplySelector.click();
-    await page.waitForTimeout(500);
+    await expect(page.getByPlaceholder('Search saved replies...')).toBeVisible({ timeout: 5000 });
 
     // Wait for the popover content
-    const searchInput = page.getByPlaceholder("Search saved replies...");
-    await expect(searchInput).toBeVisible({ timeout: 5000 });
+    const searchInput = page.getByPlaceholder('Search saved replies...');
 
     // Look for command items instead of options
     const replyItems = page.locator('[role="option"]');
@@ -157,11 +156,11 @@ test.describe("New Message with Saved Replies", () => {
     // Click the first saved reply
     await replyItems.first().click();
 
-    // Wait for the content to be inserted
-    await page.waitForTimeout(1000);
+    
+    const messageEditor = modal.locator('[role="textbox"][contenteditable="true"]');
+    await expect(messageEditor).not.toHaveText('', { timeout: 5000 });
 
     // Check that the message editor has content
-    const messageEditor = modal.locator('[role="textbox"][contenteditable="true"]');
     const editorContent = await messageEditor.textContent();
     expect(editorContent?.length).toBeGreaterThan(0);
 
@@ -218,35 +217,34 @@ test.describe("New Message with Saved Replies", () => {
     await expect(subjectInput).toBeVisible();
     expect(await subjectInput.inputValue()).toBe("");
 
-    // Wait for modal content to load
-    await page.waitForTimeout(1500);
+    
+    await expect(modal.locator('button[role="combobox"]')).toBeVisible({ timeout: 15000 });
 
     // Click saved reply selector
-    const savedReplySelector = modal.locator('button[role="combobox"]:has-text("Use saved reply")');
+    const savedReplySelector = modal.locator('button[role="combobox"]');
     await expect(savedReplySelector).toBeVisible({ timeout: 10000 });
     await savedReplySelector.click();
-
-    // Wait for popover
-    await page.waitForTimeout(500);
+    
+    await expect(page.getByPlaceholder('Search saved replies...')).toBeVisible({ timeout: 5000 });
 
     // Search for the specific test saved reply
     const searchInput = page.getByPlaceholder("Search saved replies...");
     await expect(searchInput).toBeVisible({ timeout: 5000 });
     await searchInput.fill(firstTestReplyName);
-    await page.waitForTimeout(800);
+    
+    const replyOptions = page.locator('[role="option"]');
+    await expect(replyOptions.filter({ hasText: firstTestReplyName }).first()).toBeVisible({ timeout: 5000 });
 
     // Select the first (and should be only) option
-    const replyOptions = page.locator('[role="option"]');
-    await expect(replyOptions.first()).toBeVisible({ timeout: 5000 });
-
+    
     // Verify we found the correct saved reply
     const firstOptionText = await replyOptions.first().textContent();
     expect(firstOptionText).toContain(firstTestReplyName);
 
     await replyOptions.first().click();
 
-    // Wait for the form to update
-    await page.waitForTimeout(1000);
+    
+    await expect(subjectInput).toHaveValue(firstTestReplyName, { timeout: 5000 });
 
     // Check that subject is populated
     const subjectValue = await subjectInput.inputValue();
