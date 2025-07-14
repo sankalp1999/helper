@@ -101,8 +101,52 @@ export class WidgetPage {
   }
 
   async waitForScreenshotCapture() {
-    // Note: Loading state from screenshot bug branch - using generic wait
-    await this.page.waitForTimeout(2000);
+    // Wait for one of these conditions indicating screenshot capture is complete:
+    // 1. The screenshot checkbox gets unchecked (after submission)
+    // 2. A new message appears in the chat
+    // 3. The input field is cleared and re-enabled
+    
+    const initialMessageCount = await this.getMessageCount();
+    
+    try {
+      await Promise.race([
+        // Wait for message count to increase (screenshot sent as message)
+        this.page.waitForFunction(
+          async (initial) => {
+            // Poll for message count change
+            await new Promise(resolve => setTimeout(resolve, 100));
+            return true; // Will be re-evaluated by getMessageCount below
+          },
+          initialMessageCount,
+          { timeout: 5000 }
+        ).then(async () => {
+          // Double-check message count increased
+          const newCount = await this.getMessageCount();
+          if (newCount <= initialMessageCount) {
+            throw new Error('Message count did not increase');
+          }
+        }),
+        
+        // Wait for checkbox to be unchecked after submission
+        this.screenshotCheckbox.waitFor({ 
+          state: "hidden", 
+          timeout: 5000 
+        }),
+        
+        // Wait for input to be cleared (indicates submission completed)
+        this.widgetFrame.waitForFunction(
+          () => {
+            const textarea = document.querySelector('textarea');
+            return textarea && textarea.value === '';
+          },
+          { timeout: 5000 }
+        )
+      ]);
+    } catch (error) {
+      // If all waits timeout, wait a short time then continue
+      // This handles cases where screenshot might be captured differently
+      await this.page.waitForTimeout(500);
+    }
   }
 
   async getErrorMessage() {
