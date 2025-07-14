@@ -14,7 +14,7 @@ export class WidgetPage {
     this.page = page;
     // Use a more flexible iframe selector
     this.widgetFrame = page.frameLocator("iframe").first();
-    // Use more flexible selectors that can match different input types
+    // Use flexible selectors that can match different input types the external SDK might use
     this.chatInput = this.widgetFrame.locator('textarea, input[type="text"], input:not([type]), [contenteditable="true"]').first();
     this.sendButton = this.widgetFrame.locator('button[type="submit"], button:has-text("Send"), button:has([data-testid*="send"])').first();
     this.screenshotCheckbox = this.widgetFrame.locator('input[type="checkbox"]');
@@ -29,8 +29,21 @@ export class WidgetPage {
     name?: string; 
     userId?: string; 
   }) {
-    // Use the vanilla test page which already has the widget properly configured
+    // Use the vanilla test page which has the widget SDK already configured
+    // This is the expected approach based on the existing route setup
     await this.page.goto("/widget/test/vanilla");
+    
+    // If config is provided, we can inject configuration before widget loads
+    if (config && (config.email || config.name || config.userId)) {
+      await this.page.evaluate((cfg) => {
+        // Set up global widget config that the SDK will read
+        (window as any).helperWidgetConfig = {
+          email: cfg.email,
+          name: cfg.name,
+          userId: cfg.userId,
+        };
+      }, config);
+    }
     
     // Wait for the widget button to appear (the SDK creates this)
     await this.page.waitForSelector('[data-helper-toggle]', { timeout: 15000 });
@@ -139,20 +152,21 @@ export class WidgetPage {
       await Promise.race([
         // Wait for message count to increase (screenshot sent as message)
         this.page.waitForFunction(
-          async (initial) => {
-            // Poll for message count change
-            await new Promise(resolve => setTimeout(resolve, 100));
-            return true; // Will be re-evaluated by getMessageCount below
+          async (expectedCount) => {
+            // Get current message count within the frame context
+            const iframe = document.querySelector('iframe');
+            if (!iframe || !iframe.contentDocument) return false;
+            
+            const messages = iframe.contentDocument.querySelectorAll('[data-testid="message"]');
+            const fallbackMessages = messages.length === 0 
+              ? iframe.contentDocument.querySelectorAll('div[class*="message"]:has(p)')
+              : messages;
+            
+            return fallbackMessages.length > expectedCount;
           },
           initialMessageCount,
           { timeout: 5000 }
-        ).then(async () => {
-          // Double-check message count increased
-          const newCount = await this.getMessageCount();
-          if (newCount <= initialMessageCount) {
-            throw new Error('Message count did not increase');
-          }
-        }),
+        ),
         
         // Wait for checkbox to be unchecked after submission
         this.screenshotCheckbox.waitFor({ 
