@@ -14,32 +14,19 @@ test.describe("Helper Chat Widget - Screenshot Functionality", () => {
     await apiVerifier.startCapturing();
   });
 
-  test("should capture and send screenshot with message", async () => {
+  test("should hide screenshot checkbox initially", async () => {
     await widgetPage.loadWidget(widgetConfigs.authenticated);
     
-    // Check if screenshot checkbox exists first
-    const checkboxExists = await widgetPage.screenshotCheckbox.count() > 0;
+    // Checkbox should not be visible initially
+    const checkboxVisible = await widgetPage.screenshotCheckbox.isVisible();
+    expect(checkboxVisible).toBe(false);
     
-    if (!checkboxExists) {
-      // Screenshot functionality not available in this widget
-      console.log('Screenshot checkbox not found - skipping screenshot test');
-      await widgetPage.sendMessage(testData.messages.withScreenshot);
-      await widgetPage.waitForResponse();
-      return;
-    }
+    // Type a message without screenshot keywords
+    await widgetPage.chatInput.fill("Hello, how are you?");
     
-    await widgetPage.sendMessage(testData.messages.withScreenshot, true);
-    
-    await widgetPage.waitForScreenshotCapture();
-    await widgetPage.waitForResponse();
-    
-    try {
-      await apiVerifier.verifyScreenshotInRequest();
-    } catch (error) {
-      console.log('Screenshot verification failed - widget may not support screenshots');
-      // Still verify that the message was sent
-      await apiVerifier.verifyChatApiCall();
-    }
+    // Checkbox should still not be visible
+    const stillHidden = await widgetPage.screenshotCheckbox.isVisible();
+    expect(stillHidden).toBe(false);
   });
 
   test.skip("should toggle screenshot checkbox with keyboard shortcut", async () => {
@@ -97,21 +84,22 @@ test.describe("Helper Chat Widget - Screenshot Functionality", () => {
     expect(messagesSent).toBe(1);
   });
 
-  test("should include screenshot in message when triggered by keyword", async () => {
+  test("should show screenshot checkbox when keyword is typed", async () => {
     await widgetPage.loadWidget(widgetConfigs.authenticated);
     
-    await widgetPage.sendMessage("screenshot of this page please");
+    // Type a message with screenshot keyword
+    await widgetPage.chatInput.fill("screenshot of this page please");
     
-    await widgetPage.waitForScreenshotCapture();
-    await widgetPage.waitForResponse();
+    // Wait for checkbox to appear
+    await widgetPage.screenshotCheckbox.waitFor({ state: "visible", timeout: 5000 });
     
-    try {
-      await apiVerifier.verifyScreenshotInRequest();
-    } catch (error) {
-      console.log('Screenshot keyword functionality not available in this widget');
-      // Still verify that the message was sent
-      await apiVerifier.verifyChatApiCall();
-    }
+    // Verify checkbox is visible
+    const checkboxVisible = await widgetPage.screenshotCheckbox.isVisible();
+    expect(checkboxVisible).toBe(true);
+    
+    // Verify checkbox text
+    const labelText = await widgetPage.widgetFrame.locator('label[for="screenshot"]').textContent();
+    expect(labelText).toContain("Include a screenshot for better support?");
   });
 
   test.skip("should clear screenshot error on retry", async ({ page }) => {
