@@ -71,6 +71,7 @@ export class WidgetPage {
       // Fallback: wait for message count to increase using Playwright's frame locator
       const initialCount = await this.getMessageCount();
       let currentCount = initialCount;
+      const startTime = Date.now();
       
       // Poll for message count changes using the frame locator
       while (currentCount <= initialCount) {
@@ -78,7 +79,7 @@ export class WidgetPage {
         currentCount = await this.getMessageCount();
         
         // Timeout after 30 seconds
-        const elapsed = Date.now() - (this.page as any)._startTime || 0;
+        const elapsed = Date.now() - startTime;
         if (elapsed > 30000) break;
       }
     }

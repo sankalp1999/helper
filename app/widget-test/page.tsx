@@ -19,7 +19,16 @@ export default function WidgetTestPage() {
         
         <button 
           style={{ background: '#f44336', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-          onClick={() => { throw new Error('Test error'); }}
+          onClick={() => { 
+            console.error('Test error triggered');
+            // Intentionally trigger an error for testing, but handle it properly
+            try {
+              throw new Error('Test error');
+            } catch (e) {
+              console.error('Caught test error:', e);
+              // In a real app, you'd send this to an error reporting service
+            }
+          }}
         >
           Trigger Error (for error handling tests)
         </button>

@@ -9,6 +9,7 @@ export class ApiVerifier {
   }
 
   async startCapturing() {
+    // Clear previous API calls to prevent memory buildup
     this.apiCalls = [];
     
     await this.page.route("**/api/**", async (route) => {
@@ -33,10 +34,26 @@ export class ApiVerifier {
           headers: response.headers(),
         };
         
-        await route.fulfill({ response });
+        try {
+          await route.fulfill({ response });
+        } catch (fulfillError) {
+          // If fulfill fails (e.g., page closed), try to abort gracefully
+          if (fulfillError instanceof Error && 
+              (fulfillError.message.includes('Target page') || 
+               fulfillError.message.includes('closed'))) {
+            await route.abort().catch(() => {});
+          } else {
+            throw fulfillError;
+          }
+        }
       } catch (error) {
         // If the page is closed, just abort the route
-        if (error.message?.includes('Target page, context or browser has been closed')) {
+        if (error instanceof Error && error.message?.includes('Target page, context or browser has been closed')) {
+          await route.abort().catch(() => {});
+        } else if (typeof error === 'object' && error !== null && 'message' in error && 
+                   typeof (error as any).message === 'string' && 
+                   (error as any).message.includes('Target page, context or browser has been closed')) {
+          // Handle non-Error objects with message property
           await route.abort().catch(() => {});
         } else {
           throw error;
@@ -131,5 +148,12 @@ export class ApiVerifier {
 
   clearApiCalls() {
     this.apiCalls = [];
+  }
+  
+  // Clean up method to be called after tests to prevent memory leaks
+  async cleanup() {
+    this.apiCalls = [];
+    // Remove any active route handlers
+    await this.page.unroute("**/api/**").catch(() => {});
   }
 }
