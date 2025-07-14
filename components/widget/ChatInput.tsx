@@ -83,6 +83,21 @@ export default function ChatInput({
 
   const { isDraftSaved, saveDraftToStorage, loadDraftFromStorage, clearDraft } = useDraftStore();
 
+  // Handle keyboard shortcut for screenshot checkbox (Cmd+/ or Ctrl+/)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+        e.preventDefault();
+        if (showScreenshot) {
+          setIncludeScreenshot(!includeScreenshot);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showScreenshot, includeScreenshot]);
+
   const handleSegment = useCallback(
     (segment: string) => {
       const currentInput = inputRef.current?.value || "";
@@ -297,6 +312,7 @@ export default function ChatInput({
               >
                 <Camera className="w-4 h-4" />
                 {isCapturingScreenshot ? "Capturing screenshot..." : "Include a screenshot for better support?"}
+                <span className="text-xs opacity-60 ml-1">(⌘/)</span>
               </label>
             </div>
             {screenshotError && <div className="text-xs text-red-600 ml-6">{screenshotError}</div>}
