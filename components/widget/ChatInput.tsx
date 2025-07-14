@@ -9,7 +9,7 @@ import ShadowHoverButton from "@/components/widget/ShadowHoverButton";
 import { useDraftStore, useScreenshotStore } from "@/components/widget/widgetState";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
 import { cn } from "@/lib/utils";
-import { closeWidget, sendScreenshot, sendScreenshotWithErrorHandling } from "@/lib/widget/messages";
+import { closeWidget, sendScreenshot } from "@/lib/widget/messages";
 
 type Props = {
   input: string;
@@ -149,12 +149,22 @@ export default function ChatInput({
   }, [input, setScreenshotError]);
 
   useEffect(() => {
-    if (screenshot?.response) {
-      handleSubmit(screenshot.response);
-      setScreenshot(null);
-      setIncludeScreenshot(false);
-      setIsCapturingScreenshot(false);
-      clearDraft(conversationSlug);
+    if (screenshot) {
+      if (screenshot.response) {
+        // Screenshot captured successfully
+        handleSubmit(screenshot.response);
+        setScreenshot(null);
+        setIncludeScreenshot(false);
+        setIsCapturingScreenshot(false);
+        clearDraft(conversationSlug);
+      } else {
+        // Screenshot failed (response is null)
+        setScreenshotError("Failed to capture screenshot. Sending message without screenshot.");
+        setIsCapturingScreenshot(false);
+        handleSubmit();
+        clearDraft(conversationSlug);
+        setScreenshot(null);
+      }
     }
   }, [screenshot, handleSubmit, setScreenshot, clearDraft, conversationSlug]);
 

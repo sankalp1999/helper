@@ -116,7 +116,12 @@ export default function Page() {
         const { conversationSlug } = content;
         onSelectConversation(conversationSlug);
       } else if (action === "SCREENSHOT") {
-        setScreenshot({ response: content });
+        if (content) {
+          setScreenshot({ response: content });
+        } else {
+          // Screenshot failed, but we'll handle it in ChatInput
+          setScreenshot({ response: null });
+        }
       }
     };
 
