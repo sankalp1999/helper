@@ -131,7 +131,35 @@ export default function Page() {
   const isAnonymous = !config?.email;
 
   if (!config || !token) {
-    return <div />;
+    return (
+      <div className="light flex h-screen w-full flex-col responsive-chat max-w-full sm:max-w-[520px] bg-background">
+        <div className="flex items-center justify-between border-b border-black p-1.5">
+          <div className="ml-2 h-5 w-20 animate-skeleton rounded bg-gray-100" />
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-6 animate-skeleton rounded bg-gray-100" />
+            <div className="h-6 w-6 animate-skeleton rounded bg-gray-100" />
+            <div className="h-6 w-6 animate-skeleton rounded bg-gray-100" />
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="space-y-4">
+            {[...Array(2)].map((_, i) => (
+              <div key={i} className={`flex ${i % 2 === 0 ? "justify-end" : "justify-start"}`}>
+                <div className="max-w-[80%] rounded-lg border border-gray-200 bg-white p-4">
+                  <div className="space-y-2">
+                    <div className="h-4 w-64 animate-skeleton rounded bg-gray-100" />
+                    <div className="h-4 w-48 animate-skeleton rounded bg-gray-100" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="border-t border-black p-4 bg-white">
+          <div className="h-10 w-full animate-skeleton rounded bg-gray-100" />
+        </div>
+      </div>
+    );
   }
 
   const headerTitle = currentView === "previous" ? "History" : (config.title ?? defaultTitle ?? "Support");

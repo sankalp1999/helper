@@ -6,10 +6,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import ShadowHoverButton from "@/components/widget/ShadowHoverButton";
-import { useScreenshotStore } from "@/components/widget/widgetState";
+import { useDraftStore, useScreenshotStore } from "@/components/widget/widgetState";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
 import { cn } from "@/lib/utils";
-import { closeWidget, sendScreenshot } from "@/lib/widget/messages";
+import { closeWidget, sendScreenshot, sendScreenshotWithErrorHandling } from "@/lib/widget/messages";
 
 type Props = {
   input: string;
@@ -19,6 +19,7 @@ type Props = {
   isLoading: boolean;
   isGumroadTheme: boolean;
   placeholder?: string;
+  conversationSlug?: string | null;
 };
 
 const SCREENSHOT_KEYWORDS = [
@@ -67,10 +68,20 @@ export default function ChatInput({
   isLoading,
   isGumroadTheme,
   placeholder,
+  conversationSlug,
 }: Props) {
   const [showScreenshot, setShowScreenshot] = useState(false);
   const [includeScreenshot, setIncludeScreenshot] = useState(false);
-  const { screenshot, setScreenshot } = useScreenshotStore();
+  const {
+    screenshot,
+    setScreenshot,
+    isCapturingScreenshot,
+    screenshotError,
+    setIsCapturingScreenshot,
+    setScreenshotError,
+  } = useScreenshotStore();
+
+  const { isDraftSaved, saveDraftToStorage, loadDraftFromStorage, clearDraft } = useDraftStore();
 
   const handleSegment = useCallback(
     (segment: string) => {
@@ -116,17 +127,44 @@ export default function ChatInput({
     if (!input) {
       setShowScreenshot(false);
       setIncludeScreenshot(false);
+      setScreenshotError(null);
     } else if (SCREENSHOT_KEYWORDS.some((keyword) => input.toLowerCase().includes(keyword))) {
       setShowScreenshot(true);
     }
-  }, [input]);
+  }, [input, setScreenshotError]);
 
   useEffect(() => {
     if (screenshot?.response) {
       handleSubmit(screenshot.response);
       setScreenshot(null);
+      setIncludeScreenshot(false);
+      setIsCapturingScreenshot(false);
+      clearDraft(conversationSlug);
     }
-  }, [screenshot]);
+  }, [screenshot, handleSubmit, setScreenshot, clearDraft, conversationSlug]);
+
+  // Load draft on component mount or conversation change
+  useEffect(() => {
+    const draft = loadDraftFromStorage(conversationSlug);
+    if (draft && !input && inputRef.current) {
+      // Create synthetic event to trigger handleInputChange
+      const syntheticEvent = {
+        target: { value: draft.content },
+      } as React.ChangeEvent<HTMLTextAreaElement>;
+      handleInputChange(syntheticEvent);
+    }
+  }, [conversationSlug, loadDraftFromStorage]);
+
+  // Auto-save draft every 2 seconds
+  useEffect(() => {
+    if (!input.trim()) return;
+
+    const timeoutId = setTimeout(() => {
+      saveDraftToStorage(input, conversationSlug);
+    }, 2000);
+
+    return () => clearTimeout(timeoutId);
+  }, [input, conversationSlug, saveDraftToStorage]);
 
   const submit = () => {
     const normalizedInput = input.trim().toLowerCase();
@@ -140,10 +178,22 @@ export default function ChatInput({
       closeWidget();
       return;
     }
+
     if (includeScreenshot) {
-      sendScreenshot();
+      try {
+        setIsCapturingScreenshot(true);
+        setScreenshotError(null);
+        sendScreenshot();
+      } catch (error) {
+        captureExceptionAndLog(error);
+        setScreenshotError("Failed to capture screenshot. Sending message without screenshot.");
+        setIsCapturingScreenshot(false);
+        handleSubmit();
+        clearDraft(conversationSlug);
+      }
     } else {
       handleSubmit();
+      clearDraft(conversationSlug);
     }
   };
 
@@ -157,6 +207,11 @@ export default function ChatInput({
 
   return (
     <div className="border-t border-black p-4 bg-white">
+      {isDraftSaved && (
+        <div className="flex items-center justify-end mb-2">
+          <span className="text-xs text-gray-500">Draft saved</span>
+        </div>
+      )}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -210,7 +265,7 @@ export default function ChatInput({
                 </Tooltip>
               </TooltipProvider>
             )}
-            <ShadowHoverButton isLoading={isLoading} isGumroadTheme={isGumroadTheme} />
+            <ShadowHoverButton isLoading={isLoading || isCapturingScreenshot} isGumroadTheme={isGumroadTheme} />
           </div>
         </div>
         {showScreenshot && (
@@ -223,21 +278,28 @@ export default function ChatInput({
               stiffness: 600,
               damping: 30,
             }}
-            className="flex items-center gap-2"
+            className="flex flex-col gap-2"
           >
-            <Checkbox
-              id="screenshot"
-              checked={includeScreenshot}
-              onCheckedChange={(e) => setIncludeScreenshot(e === true)}
-              className="border-muted-foreground data-[state=checked]:bg-black data-[state=checked]:text-white"
-            />
-            <label
-              htmlFor="screenshot"
-              className="cursor-pointer flex items-center gap-2 text-sm text-muted-foreground"
-            >
-              <Camera className="w-4 h-4" />
-              Include a screenshot for better support?
-            </label>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="screenshot"
+                checked={includeScreenshot}
+                onCheckedChange={(e) => {
+                  setIncludeScreenshot(e === true);
+                  if (!e) setScreenshotError(null);
+                }}
+                className="border-muted-foreground data-[state=checked]:bg-black data-[state=checked]:text-white"
+                disabled={isCapturingScreenshot}
+              />
+              <label
+                htmlFor="screenshot"
+                className="cursor-pointer flex items-center gap-2 text-sm text-muted-foreground"
+              >
+                <Camera className="w-4 h-4" />
+                {isCapturingScreenshot ? "Capturing screenshot..." : "Include a screenshot for better support?"}
+              </label>
+            </div>
+            {screenshotError && <div className="text-xs text-red-600 ml-6">{screenshotError}</div>}
           </motion.div>
         )}
       </form>

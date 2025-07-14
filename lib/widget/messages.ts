@@ -45,6 +45,10 @@ export const sendScreenshot = () => {
   });
 };
 
+export const sendScreenshotWithErrorHandling = async (): Promise<string> => {
+  return await sendRequestToParent(SCREENSHOT_ACTION);
+};
+
 export const toggleWidgetHeight = () => {
   sendMessageToParent({
     action: TOGGLE_HEIGHT_ACTION,
