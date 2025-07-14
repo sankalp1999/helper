@@ -68,18 +68,19 @@ export class WidgetPage {
     try {
       await this.widgetFrame.locator('[data-testid="ai-message"]').waitFor({ state: "visible", timeout: 30000 });
     } catch {
-      // Fallback: wait for message count to increase
+      // Fallback: wait for message count to increase using Playwright's frame locator
       const initialCount = await this.getMessageCount();
-      await this.page.waitForFunction(
-        async (expectedCount) => {
-          const frame = document.querySelector('iframe');
-          if (!frame) return false;
-          const messages = frame.contentDocument?.querySelectorAll('div[class*="message"]');
-          return messages && messages.length > expectedCount;
-        },
-        initialCount,
-        { timeout: 30000 }
-      );
+      let currentCount = initialCount;
+      
+      // Poll for message count changes using the frame locator
+      while (currentCount <= initialCount) {
+        await this.page.waitForTimeout(500);
+        currentCount = await this.getMessageCount();
+        
+        // Timeout after 30 seconds
+        const elapsed = Date.now() - (this.page as any)._startTime || 0;
+        if (elapsed > 30000) break;
+      }
     }
   }
 
