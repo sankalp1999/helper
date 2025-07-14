@@ -38,7 +38,7 @@ import {
   getLastAiGeneratedDraft,
   getMessagesOnly,
 } from "@/lib/data/conversationMessage";
-import { createAndUploadFile, getFileUrl, downloadFile } from "@/lib/data/files";
+import { createAndUploadFile, downloadFile, getFileUrl } from "@/lib/data/files";
 import { type Mailbox } from "@/lib/data/mailbox";
 import { getPlatformCustomer, PlatformCustomer } from "@/lib/data/platformCustomer";
 import { fetchPromptRetrievalData } from "@/lib/data/retrieval";
@@ -80,9 +80,7 @@ export const checkTokenCountAndSummarizeIfNeeded = async (text: string): Promise
   return summary;
 };
 
-const loadScreenshotAttachments = async (
-  messages: (typeof conversationMessages.$inferSelect)[],
-) => {
+const loadScreenshotAttachments = async (messages: (typeof conversationMessages.$inferSelect)[]) => {
   const attachments = await db.query.files.findMany({
     where: inArray(
       files.messageId,

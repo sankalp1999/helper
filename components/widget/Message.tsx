@@ -26,7 +26,7 @@ type Props = {
 
 export default function Message({
   message,
-  allMessages,
+  _allMessages,
   conversationSlug,
   token,
   data,
@@ -34,14 +34,12 @@ export default function Message({
   attachments,
   hideReasoning = false,
 }: Props) {
-
   const idFromAnnotation =
     message.annotations?.find(
       (annotation): annotation is { id: string | number } =>
         typeof annotation === "object" && annotation !== null && "id" in annotation,
     )?.id ?? null;
   const persistedId = idFromAnnotation ?? (!message.id.startsWith("client_") ? message.id : null);
-
 
   const reasoningStarted = data?.some(
     (item) => typeof item === "object" && item !== null && "event" in item && item.event === "reasoningStarted",

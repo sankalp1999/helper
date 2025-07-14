@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import ShadowHoverButton from "@/components/widget/ShadowHoverButton";
-import { useDraftStore, useScreenshotStore } from "@/components/widget/widgetState";
+import { useScreenshotStore } from "@/components/widget/widgetState";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
 import { cn } from "@/lib/utils";
 import { closeWidget, sendScreenshot } from "@/lib/widget/messages";
@@ -19,7 +19,6 @@ type Props = {
   isLoading: boolean;
   isGumroadTheme: boolean;
   placeholder?: string;
-  conversationSlug?: string | null;
 };
 
 const SCREENSHOT_KEYWORDS = [
@@ -68,7 +67,6 @@ export default function ChatInput({
   isLoading,
   isGumroadTheme,
   placeholder,
-  conversationSlug,
 }: Props) {
   const [showScreenshot, setShowScreenshot] = useState(false);
   const [includeScreenshot, setIncludeScreenshot] = useState(false);
@@ -81,12 +79,10 @@ export default function ChatInput({
     setScreenshotError,
   } = useScreenshotStore();
 
-  const { isDraftSaved, saveDraftToStorage, loadDraftFromStorage, clearDraft } = useDraftStore();
-
   // Handle keyboard shortcut for screenshot checkbox (Cmd+/ or Ctrl+/)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "/") {
         e.preventDefault();
         if (showScreenshot) {
           setIncludeScreenshot(!includeScreenshot);
@@ -94,8 +90,8 @@ export default function ChatInput({
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [showScreenshot, includeScreenshot]);
 
   const handleSegment = useCallback(
@@ -156,40 +152,15 @@ export default function ChatInput({
         setScreenshot(null);
         setIncludeScreenshot(false);
         setIsCapturingScreenshot(false);
-        clearDraft(conversationSlug);
       } else {
         // Screenshot failed (response is null)
         setScreenshotError("Failed to capture screenshot. Sending message without screenshot.");
         setIsCapturingScreenshot(false);
         handleSubmit();
-        clearDraft(conversationSlug);
         setScreenshot(null);
       }
     }
-  }, [screenshot, handleSubmit, setScreenshot, clearDraft, conversationSlug]);
-
-  // Load draft on component mount or conversation change
-  useEffect(() => {
-    const draft = loadDraftFromStorage(conversationSlug);
-    if (draft && !input && inputRef.current) {
-      // Create synthetic event to trigger handleInputChange
-      const syntheticEvent = {
-        target: { value: draft.content },
-      } as React.ChangeEvent<HTMLTextAreaElement>;
-      handleInputChange(syntheticEvent);
-    }
-  }, [conversationSlug, loadDraftFromStorage]);
-
-  // Auto-save draft every 2 seconds
-  useEffect(() => {
-    if (!input.trim()) return;
-
-    const timeoutId = setTimeout(() => {
-      saveDraftToStorage(input, conversationSlug);
-    }, 2000);
-
-    return () => clearTimeout(timeoutId);
-  }, [input, conversationSlug, saveDraftToStorage]);
+  }, [screenshot, handleSubmit, setScreenshot]);
 
   const submit = () => {
     const normalizedInput = input.trim().toLowerCase();
@@ -214,11 +185,9 @@ export default function ChatInput({
         setScreenshotError("Failed to capture screenshot. Sending message without screenshot.");
         setIsCapturingScreenshot(false);
         handleSubmit();
-        clearDraft(conversationSlug);
       }
     } else {
       handleSubmit();
-      clearDraft(conversationSlug);
     }
   };
 
@@ -232,11 +201,6 @@ export default function ChatInput({
 
   return (
     <div className="border-t border-black p-4 bg-white">
-      {isDraftSaved && (
-        <div className="flex items-center justify-end mb-2">
-          <span className="text-xs text-gray-500">Draft saved</span>
-        </div>
-      )}
       <form
         onSubmit={(e) => {
           e.preventDefault();
