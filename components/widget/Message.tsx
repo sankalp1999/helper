@@ -90,12 +90,15 @@ export default function Message({
         "ml-9 items-end": message.role === USER_ROLE,
         "mr-9 items-start": message.role !== USER_ROLE,
       })}
+      data-testid="message"
+      data-message-role={message.role}
     >
       <div
         className={cx("rounded-lg max-w-full", {
           "bg-primary text-primary-foreground": message.role === USER_ROLE,
           "border border-black bg-background text-foreground": message.role !== USER_ROLE,
         })}
+        data-testid={message.role === USER_ROLE ? "user-message" : "ai-message"}
       >
         {userAnnotation ? (
           <div className="p-4 pb-0 flex items-center text-gray-500 text-xs font-bold">
