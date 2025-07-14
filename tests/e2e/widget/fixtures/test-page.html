@@ -51,7 +51,7 @@
       </ul>
     </div>
     
-    <button class="error-button" onclick="throw new Error('Test error')">
+    <button class="error-button" onclick="console.error('Test error triggered'); try { throw new Error('Test error'); } catch(e) { console.error('Caught test error:', e); }">
       Trigger Error (for error handling tests)
     </button>
     
