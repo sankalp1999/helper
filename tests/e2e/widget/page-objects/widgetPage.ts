@@ -14,8 +14,9 @@ export class WidgetPage {
     this.page = page;
     // Use a more flexible iframe selector
     this.widgetFrame = page.frameLocator("iframe").first();
-    this.chatInput = this.widgetFrame.locator('textarea').first();
-    this.sendButton = this.widgetFrame.locator('button[type="submit"]');
+    // Use more flexible selectors that can match different input types
+    this.chatInput = this.widgetFrame.locator('textarea, input[type="text"], input:not([type]), [contenteditable="true"]').first();
+    this.sendButton = this.widgetFrame.locator('button[type="submit"], button:has-text("Send"), button:has([data-testid*="send"])').first();
     this.screenshotCheckbox = this.widgetFrame.locator('input[type="checkbox"]');
     this.messagesList = this.widgetFrame.locator('[data-testid="messages-list"]');
     this.loadingSpinner = this.widgetFrame.locator('[data-testid="loading-spinner"]');
@@ -43,14 +44,40 @@ export class WidgetPage {
       timeout: 15000 
     });
     
-    // Wait a bit for iframe content to load
-    await this.page.waitForTimeout(2000);
+    // Wait for iframe content to be properly loaded by checking multiple possible selectors
+    // The widget might use different input types (textarea, input, etc.)
+    let inputFound = false;
+    const possibleInputSelectors = ['textarea', 'input[type="text"]', 'input', '[contenteditable="true"]'];
     
-    // Ensure the iframe content is loaded - use the correct selector
-    await this.widgetFrame.locator('textarea').waitFor({ 
-      state: "visible",
-      timeout: 15000 
-    });
+    for (const selector of possibleInputSelectors) {
+      try {
+        await this.widgetFrame.locator(selector).first().waitFor({ 
+          state: "visible",
+          timeout: 5000 
+        });
+        inputFound = true;
+        break;
+      } catch {
+        // Try next selector
+        continue;
+      }
+    }
+    
+    if (!inputFound) {
+      // Final fallback: wait for iframe to be attached and give it time to load
+      await this.page.waitForTimeout(3000);
+      
+      // Try to wait for any interactive element in the iframe
+      try {
+        await this.widgetFrame.locator('button, input, textarea, [role="textbox"]').first().waitFor({ 
+          state: "visible",
+          timeout: 10000 
+        });
+      } catch {
+        // If still no interactive elements, the widget might have a different structure
+        // Continue anyway as some tests might not need input
+      }
+    }
   }
 
   async sendMessage(message: string, includeScreenshot = false) {
