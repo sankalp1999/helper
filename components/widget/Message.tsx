@@ -98,7 +98,6 @@ export default function Message({
           "bg-primary text-primary-foreground": message.role === USER_ROLE,
           "border border-black bg-background text-foreground": message.role !== USER_ROLE,
         })}
-        data-testid={message.role === USER_ROLE ? "user-message" : "ai-message"}
       >
         {userAnnotation ? (
           <div className="p-4 pb-0 flex items-center text-gray-500 text-xs font-bold">

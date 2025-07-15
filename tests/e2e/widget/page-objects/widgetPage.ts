@@ -34,14 +34,10 @@ export class WidgetPage {
     await this.page.goto("/widget/test/vanilla");
     
     // If config is provided, we can inject configuration before widget loads
-    if (config && (config.email || config.name || config.userId)) {
+    if (config) {
       await this.page.evaluate((cfg) => {
         // Set up global widget config that the SDK will read
-        (window as any).helperWidgetConfig = {
-          email: cfg.email,
-          name: cfg.name,
-          userId: cfg.userId,
-        };
+        (window as any).helperWidgetConfig = { ...cfg };
       }, config);
     }
     
@@ -104,9 +100,9 @@ export class WidgetPage {
   }
 
   async waitForResponse() {
-    // Wait for either data-testid="ai-message" or any new message to appear
+    // Wait for AI response message to appear using the new test ID structure
     try {
-      await this.widgetFrame.locator('[data-testid="ai-message"]').waitFor({ state: "visible", timeout: 30000 });
+      await this.widgetFrame.locator('[data-testid="message"][data-message-role="assistant"]').waitFor({ state: "visible", timeout: 30000 });
     } catch {
       // Fallback: wait for message count to increase using Playwright's frame locator
       const initialCount = await this.getMessageCount();

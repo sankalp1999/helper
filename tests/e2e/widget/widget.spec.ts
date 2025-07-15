@@ -129,7 +129,7 @@ test.describe("Helper Chat Widget - Basic Functionality", () => {
   });
 
   test.skip("should handle network errors gracefully", async ({ page }) => {
-    // Skip: Error message display from screenshot bug branch
+    // Skip: Error message display from PR #756 - https://github.com/antiwork/helper/issues/756
     await page.route("**/api/chat", route => route.abort("failed"));
     
     await widgetPage.loadWidget(widgetConfigs.anonymous);

@@ -30,7 +30,7 @@ test.describe("Helper Chat Widget - Screenshot Functionality", () => {
   });
 
   test.skip("should toggle screenshot checkbox with keyboard shortcut", async () => {
-    // Skip: Keyboard shortcut feature from screenshot bug branch
+    // Skip: Keyboard shortcut feature from PR #756 - https://github.com/antiwork/helper/issues/756
     await widgetPage.loadWidget(widgetConfigs.anonymous);
     
     const initialState = await widgetPage.isScreenshotCheckboxChecked();
@@ -48,7 +48,7 @@ test.describe("Helper Chat Widget - Screenshot Functionality", () => {
   });
 
   test.skip("should show loading state during screenshot capture", async () => {
-    // Skip: Loading state feature from screenshot bug branch
+    // Skip: Loading state feature from PR #756 - https://github.com/antiwork/helper/issues/756
     await widgetPage.loadWidget(widgetConfigs.authenticated);
     
     await widgetPage.chatInput.fill(testData.messages.withScreenshot);
@@ -65,7 +65,7 @@ test.describe("Helper Chat Widget - Screenshot Functionality", () => {
   });
 
   test.skip("should handle screenshot capture failure gracefully", async ({ page }) => {
-    // Skip: Error handling feature from screenshot bug branch
+    // Skip: Error handling feature from PR #756 - https://github.com/antiwork/helper/issues/756
     await widgetPage.loadWidget(widgetConfigs.anonymous);
     
     await page.evaluate(() => {
@@ -103,7 +103,7 @@ test.describe("Helper Chat Widget - Screenshot Functionality", () => {
   });
 
   test.skip("should clear screenshot error on retry", async ({ page }) => {
-    // Skip: Error handling feature from screenshot bug branch
+    // Skip: Error handling feature from PR #756 - https://github.com/antiwork/helper/issues/756
     await widgetPage.loadWidget(widgetConfigs.anonymous);
     
     await page.evaluate(() => {
@@ -130,7 +130,7 @@ test.describe("Helper Chat Widget - Screenshot Functionality", () => {
   });
 
   test.skip("should disable input during screenshot capture", async () => {
-    // Skip: Loading state feature from screenshot bug branch
+    // Skip: Loading state feature from PR #756 - https://github.com/antiwork/helper/issues/756
     await widgetPage.loadWidget(widgetConfigs.authenticated);
     
     await widgetPage.chatInput.fill(testData.messages.withScreenshot);
@@ -193,7 +193,7 @@ test.describe("Helper Chat Widget - Screenshot Functionality", () => {
   });
 
   test.skip("should handle rapid screenshot toggles", async () => {
-    // Skip: Keyboard shortcut feature from screenshot bug branch
+    // Skip: Keyboard shortcut feature from PR #756 - https://github.com/antiwork/helper/issues/756
     await widgetPage.loadWidget(widgetConfigs.authenticated);
     
     for (let i = 0; i < 5; i++) {
