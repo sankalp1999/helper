@@ -12,7 +12,7 @@ import MessagesList from "@/components/widget/MessagesList";
 import MessagesSkeleton from "@/components/widget/MessagesSkeleton";
 import SupportButtons from "@/components/widget/SupportButtons";
 import { useNewConversation } from "@/components/widget/useNewConversation";
-import { useWidgetView } from "@/components/widget/useWidgetView";
+import { useWidgetView, View } from "@/components/widget/useWidgetView";
 import { publicConversationChannelId } from "@/lib/realtime/channels";
 import { DISABLED, useRealtimeEvent } from "@/lib/realtime/hooks";
 import { captureExceptionAndLog } from "@/lib/shared/sentry";
@@ -28,6 +28,7 @@ type Props = {
   onLoadFailed: () => void;
   guideEnabled: boolean;
   resumeGuide: GuideInstructions | null;
+  currentView: View;
 };
 
 export type Attachment = {
@@ -45,6 +46,7 @@ export default function Conversation({
   onLoadFailed,
   guideEnabled,
   resumeGuide,
+  currentView,
 }: Props) {
   const { conversationSlug, setConversationSlug, createConversation } = useNewConversation(token);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -242,8 +244,8 @@ export default function Conversation({
     }
   }, [isNewConversation, setMessages, setConversationSlug]);
 
-  const handleSubmit = async (screenshotData?: string) => {
-    if (!input.trim()) return;
+  const handleSubmit = async (screenshotData?: string, attachments?: File[]) => {
+    if (!input.trim() && !screenshotData && (!attachments || attachments.length === 0)) return;
 
     setData(undefined);
 
@@ -255,10 +257,48 @@ export default function Conversation({
 
       if (currentSlug) {
         setIsNewConversation(false);
+
+        const attachmentsToSend = [];
+
+        if (screenshotData) {
+          attachmentsToSend.push({
+            name: "screenshot.png",
+            contentType: "image/png",
+            url: screenshotData,
+          });
+        }
+
+        if (attachments && attachments.length > 0) {
+          const filePromises = attachments.map(async (file) => {
+            try {
+              const reader = new FileReader();
+              const dataUrl = await new Promise<string>((resolve, reject) => {
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`));
+                reader.readAsDataURL(file);
+              });
+
+              return {
+                name: file.name,
+                contentType: file.type,
+                url: dataUrl,
+              };
+            } catch (error) {
+              captureExceptionAndLog(error);
+              return null;
+            }
+          });
+
+          const fileResults = await Promise.all(filePromises);
+          fileResults.forEach((result) => {
+            if (result) {
+              attachmentsToSend.push(result);
+            }
+          });
+        }
+
         handleAISubmit(undefined, {
-          experimental_attachments: screenshotData
-            ? [{ name: "screenshot.png", contentType: "image/png", url: screenshotData }]
-            : [],
+          experimental_attachments: attachmentsToSend,
           body: { conversationSlug: currentSlug },
         });
       }
@@ -301,6 +341,8 @@ export default function Conversation({
     inputRef.current?.focus();
     setIsProvidingDetails(true);
   };
+
+  if (currentView !== "chat") return null;
 
   if (isLoadingConversation && !isNewConversation && selectedConversationSlug) {
     return <MessagesSkeleton />;
