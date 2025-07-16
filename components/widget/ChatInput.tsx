@@ -78,8 +78,11 @@ export default function ChatInput({
   const { screenshot, setScreenshot, screenshotState, setScreenshotState } = useScreenshotStore();
 
   // Handle keyboard shortcut for screenshot checkbox (Cmd+Shift+S on Mac)
+  const isMac = typeof window !== "undefined" && 
+    (navigator.platform.includes("Mac") || navigator.userAgent.includes("Mac"));
+  
   useHotkeys(
-    "cmd+shift+s",
+    "meta+shift+s",
     (e) => {
       e.preventDefault();
       if (showScreenshot) {
@@ -87,8 +90,8 @@ export default function ChatInput({
       }
     },
     {
-      enabled: showScreenshot && typeof window !== "undefined" && navigator.platform.includes("Mac"),
-      enableOnFormTags: true,
+      enabled: showScreenshot && isMac,
+      enableOnFormTags: ["INPUT", "TEXTAREA", "SELECT"],
     },
     [showScreenshot, includeScreenshot],
   );
