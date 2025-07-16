@@ -1,6 +1,7 @@
 import { Camera, Mic } from "lucide-react";
 import * as motion from "motion/react-client";
 import { useCallback, useEffect, useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 import { useSpeechRecognition } from "@/components/hooks/useSpeechRecognition";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
@@ -70,29 +71,23 @@ export default function ChatInput({
 }: Props) {
   const [showScreenshot, setShowScreenshot] = useState(false);
   const [includeScreenshot, setIncludeScreenshot] = useState(false);
-  const {
-    screenshot,
-    setScreenshot,
-    isCapturingScreenshot,
-    screenshotError,
-    setIsCapturingScreenshot,
-    setScreenshotError,
-  } = useScreenshotStore();
+  const { screenshot, setScreenshot, screenshotState, setScreenshotState } = useScreenshotStore();
 
-  // Handle keyboard shortcut for screenshot checkbox (Cmd+/ or Ctrl+/)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "/") {
-        e.preventDefault();
-        if (showScreenshot) {
-          setIncludeScreenshot(!includeScreenshot);
-        }
+  // Handle keyboard shortcut for screenshot checkbox (Cmd+Shift+S on Mac)
+  useHotkeys(
+    "cmd+shift+s",
+    (e) => {
+      e.preventDefault();
+      if (showScreenshot) {
+        setIncludeScreenshot(!includeScreenshot);
       }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showScreenshot, includeScreenshot]);
+    },
+    {
+      enabled: showScreenshot && typeof window !== "undefined" && navigator.platform.includes("Mac"),
+      enableOnFormTags: true,
+    },
+    [showScreenshot, includeScreenshot],
+  );
 
   const handleSegment = useCallback(
     (segment: string) => {
@@ -138,29 +133,31 @@ export default function ChatInput({
     if (!input) {
       setShowScreenshot(false);
       setIncludeScreenshot(false);
-      setScreenshotError(null);
+      setScreenshotState({ state: "initial" });
     } else if (SCREENSHOT_KEYWORDS.some((keyword) => input.toLowerCase().includes(keyword))) {
       setShowScreenshot(true);
     }
-  }, [input, setScreenshotError]);
+  }, [input, setScreenshotState]);
 
   useEffect(() => {
     if (screenshot) {
       if (screenshot.response) {
         // Screenshot captured successfully
+        setScreenshotState({ state: "captured", response: screenshot.response });
         handleSubmit(screenshot.response);
         setScreenshot(null);
         setIncludeScreenshot(false);
-        setIsCapturingScreenshot(false);
       } else {
         // Screenshot failed (response is null)
-        setScreenshotError("Failed to capture screenshot. Sending message without screenshot.");
-        setIsCapturingScreenshot(false);
+        setScreenshotState({
+          state: "error",
+          error: "Failed to capture screenshot. Sending message without screenshot.",
+        });
         handleSubmit();
         setScreenshot(null);
       }
     }
-  }, [screenshot, handleSubmit, setScreenshot]);
+  }, [screenshot, handleSubmit, setScreenshot, setScreenshotState]);
 
   const submit = () => {
     const normalizedInput = input.trim().toLowerCase();
@@ -177,13 +174,14 @@ export default function ChatInput({
 
     if (includeScreenshot) {
       try {
-        setIsCapturingScreenshot(true);
-        setScreenshotError(null);
+        setScreenshotState({ state: "capturing" });
         sendScreenshot();
       } catch (error) {
         captureExceptionAndLog(error);
-        setScreenshotError("Failed to capture screenshot. Sending message without screenshot.");
-        setIsCapturingScreenshot(false);
+        setScreenshotState({
+          state: "error",
+          error: "Failed to capture screenshot. Sending message without screenshot.",
+        });
         handleSubmit();
       }
     } else {
@@ -254,7 +252,10 @@ export default function ChatInput({
                 </Tooltip>
               </TooltipProvider>
             )}
-            <ShadowHoverButton isLoading={isLoading || isCapturingScreenshot} isGumroadTheme={isGumroadTheme} />
+            <ShadowHoverButton
+              isLoading={isLoading || screenshotState.state === "capturing"}
+              isGumroadTheme={isGumroadTheme}
+            />
           </div>
         </div>
         {showScreenshot && (
@@ -275,21 +276,27 @@ export default function ChatInput({
                 checked={includeScreenshot}
                 onCheckedChange={(e) => {
                   setIncludeScreenshot(e === true);
-                  if (!e) setScreenshotError(null);
+                  if (!e) setScreenshotState({ state: "initial" });
                 }}
                 className="border-muted-foreground data-[state=checked]:bg-black data-[state=checked]:text-white"
-                disabled={isCapturingScreenshot}
+                disabled={screenshotState.state === "capturing"}
               />
               <label
                 htmlFor="screenshot"
                 className="cursor-pointer flex items-center gap-2 text-sm text-muted-foreground"
               >
                 <Camera className="w-4 h-4" />
-                {isCapturingScreenshot ? "Capturing screenshot..." : "Include a screenshot for better support?"}
-                <span className="text-xs opacity-60 ml-1">(⌘/)</span>
+                {screenshotState.state === "capturing"
+                  ? "Capturing screenshot..."
+                  : "Include a screenshot for better support?"}
+                {typeof window !== "undefined" && navigator.platform.includes("Mac") && (
+                  <span className="text-xs opacity-60 ml-1">(⌘⇧S)</span>
+                )}
               </label>
             </div>
-            {screenshotError && <div className="text-xs text-red-600 ml-6">{screenshotError}</div>}
+            {screenshotState.state === "error" && (
+              <div className="text-xs text-red-600 ml-6">{screenshotState.error}</div>
+            )}
           </motion.div>
         )}
       </form>
