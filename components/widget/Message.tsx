@@ -4,6 +4,8 @@ import { Paperclip } from "lucide-react";
 import HumanizedTime from "@/components/humanizedTime";
 import { Attachment } from "@/components/widget/Conversation";
 import MessageElement from "@/components/widget/MessageElement";
+import { useWidgetView } from "@/components/widget/useWidgetView";
+import { PromptInfo } from "@/lib/ai/promptInfo";
 
 const USER_ROLE = "user";
 
@@ -26,7 +28,7 @@ type Props = {
 
 export default function Message({
   message,
-  _allMessages,
+  allMessages,
   conversationSlug,
   token,
   data,
@@ -34,12 +36,19 @@ export default function Message({
   attachments,
   hideReasoning = false,
 }: Props) {
+  const { togglePromptInfo } = useWidgetView();
   const idFromAnnotation =
     message.annotations?.find(
       (annotation): annotation is { id: string | number } =>
         typeof annotation === "object" && annotation !== null && "id" in annotation,
     )?.id ?? null;
   const persistedId = idFromAnnotation ?? (!message.id.startsWith("client_") ? message.id : null);
+
+  const promptInfo =
+    message.annotations?.find(
+      (annotation): annotation is { promptInfo: PromptInfo } =>
+        typeof annotation === "object" && annotation !== null && "promptInfo" in annotation,
+    )?.promptInfo ?? null;
 
   const reasoningStarted = data?.some(
     (item) => typeof item === "object" && item !== null && "event" in item && item.event === "reasoningStarted",
@@ -153,7 +162,17 @@ export default function Message({
         <span className="text-xs text-gray-400" title={message.createdAt ? message.createdAt.toLocaleString() : ""}>
           {message.createdAt ? <HumanizedTime time={message.createdAt.toISOString()} /> : null}
         </span>
-        {/* Hide Details button in widget to prevent exposing sensitive prompt information */}
+        {promptInfo && (
+          <>
+            <span className="text-xs text-gray-400">·</span>
+            <button
+              onClick={() => togglePromptInfo({ promptInfo, message, allMessages })}
+              className="text-xs text-gray-400 hover:text-gray-600 underline"
+            >
+              Details
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
