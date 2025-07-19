@@ -21,7 +21,7 @@ export class WidgetPage {
     this.sendButton = this.widgetFrame
       .locator('button[type="submit"], button:has-text("Send"), button:has([data-testid*="send"])')
       .first();
-    this.screenshotCheckbox = this.widgetFrame.locator('#screenshot');
+    this.screenshotCheckbox = this.widgetFrame.locator('[data-testid="screenshot-checkbox"]');
     this.messagesList = this.widgetFrame.locator('[data-testid="messages-list"]');
     this.loadingSpinner = this.widgetFrame.locator('[data-testid="loading-spinner"]');
     this.errorMessage = this.widgetFrame.locator('[data-testid="error-message"]');

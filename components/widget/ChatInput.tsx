@@ -2,6 +2,7 @@ import { Camera, Mic, Paperclip, X } from "lucide-react";
 import * as motion from "motion/react-client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
+import { isMacOS } from "@tiptap/core";
 import { useSpeechRecognition } from "@/components/hooks/useSpeechRecognition";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
@@ -77,12 +78,9 @@ export default function ChatInput({
   const [fileError, setFileError] = useState<string | null>(null);
   const { screenshot, setScreenshot, screenshotState, setScreenshotState } = useScreenshotStore();
 
-  // Handle keyboard shortcut for screenshot checkbox (Cmd+Shift+S on Mac)
-  const isMac = typeof window !== "undefined" && 
-    (navigator.platform.includes("Mac") || navigator.userAgent.includes("Mac"));
-  
+  // Handle keyboard shortcut for screenshot checkbox
   useHotkeys(
-    "meta+shift+s",
+    "mod+shift+s",
     (e) => {
       e.preventDefault();
       if (showScreenshot) {
@@ -90,7 +88,7 @@ export default function ChatInput({
       }
     },
     {
-      enabled: showScreenshot && isMac,
+      enabled: showScreenshot,
       enableOnFormTags: ["INPUT", "TEXTAREA", "SELECT"],
     },
     [showScreenshot, includeScreenshot],
@@ -173,6 +171,7 @@ export default function ChatInput({
           state: "error",
           error: "Failed to capture screenshot. Sending message without screenshot.",
         });
+        setIncludeScreenshot(false);
         handleSubmit();
         setScreenshot(null);
       }
@@ -475,6 +474,7 @@ export default function ChatInput({
             <div className="flex items-center gap-2">
               <Checkbox
                 id="screenshot"
+                data-testid="screenshot-checkbox"
                 checked={includeScreenshot}
                 onCheckedChange={(e) => {
                   setIncludeScreenshot(e === true);
@@ -491,7 +491,7 @@ export default function ChatInput({
                 {screenshotState.state === "capturing"
                   ? "Capturing screenshot..."
                   : "Include a screenshot for better support?"}
-                {typeof window !== "undefined" && navigator.platform.includes("Mac") && (
+                {isMacOS() && (
                   <span className="text-xs opacity-60 ml-1">(⌘⇧S)</span>
                 )}
               </label>
