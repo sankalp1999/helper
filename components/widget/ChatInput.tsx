@@ -157,7 +157,8 @@ export default function ChatInput({
       } as React.ChangeEvent<HTMLTextAreaElement>;
       handleInputChange(event);
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedDraft]);
 
   useEffect(() => {
     if (!input) {
