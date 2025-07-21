@@ -3,6 +3,7 @@ import { Camera, Mic, Paperclip, X } from "lucide-react";
 import * as motion from "motion/react-client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
+import { useExpiringLocalStorage } from "@/components/hooks/use-expiring-local-storage";
 import { useSpeechRecognition } from "@/components/hooks/useSpeechRecognition";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
@@ -77,6 +78,10 @@ export default function ChatInput({
   const [isDragOver, setIsDragOver] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
   const { screenshot, setScreenshot, screenshotState, setScreenshotState } = useScreenshotStore();
+  const [savedDraft, setSavedDraft] = useExpiringLocalStorage<string>("widget_draft", {
+    expirationTime: 1000 * 60 * 60 * 24, // 24 hours
+    shouldStore: (value) => value.trim().length > 0,
+  });
 
   // Handle keyboard shortcut for screenshot checkbox
   useHotkeys(
@@ -136,6 +141,25 @@ export default function ChatInput({
   useEffect(() => {
     adjustTextareaHeight();
   }, [input]);
+
+  // Auto-save draft with debouncing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSavedDraft(input.trim() ? input : "");
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timer);
+  }, [input, setSavedDraft]);
+
+  // Restore draft on mount
+  useEffect(() => {
+    if (!input && savedDraft && inputRef.current) {
+      const event = {
+        target: { value: savedDraft },
+      } as React.ChangeEvent<HTMLTextAreaElement>;
+      handleInputChange(event);
+    }
+  }, []);
 
   useEffect(() => {
     if (!input) {
@@ -310,6 +334,9 @@ export default function ChatInput({
       objectUrlsRef.current.clear();
       setSelectedFiles([]);
     }
+
+    // Clear draft after successful submission
+    setSavedDraft("");
   };
 
   const toggleRecording = () => {

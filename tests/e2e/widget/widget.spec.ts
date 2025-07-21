@@ -209,4 +209,62 @@ test.describe("Helper Chat Widget - Basic Functionality", () => {
       console.log("Message role verification skipped - verified message counts instead");
     }
   });
+
+  test("should auto-save draft and persist across widget close/open", async ({ page }) => {
+    await widgetPage.loadWidget(widgetConfigs.anonymous);
+    
+    // Type a message but don't send it
+    const draftMessage = "This is my draft message that should be saved";
+    await widgetPage.chatInput.fill(draftMessage);
+    
+    // Wait for auto-save debounce (500ms + buffer)
+    await page.waitForTimeout(700);
+    
+    // Close the widget by clicking the toggle button
+    await page.click("[data-helper-toggle]");
+    
+    // Wait for widget to close
+    await page.waitForTimeout(500);
+    
+    // Re-open the widget
+    await page.click("[data-helper-toggle]");
+    
+    // Wait for iframe to load
+    await page.waitForSelector("iframe", { state: "visible" });
+    await widgetPage.chatInput.waitFor({ state: "visible" });
+    
+    // Check if draft is restored
+    const restoredValue = await widgetPage.chatInput.inputValue();
+    expect(restoredValue).toBe(draftMessage);
+  });
+
+  test("should clear draft after sending message", async ({ page }) => {
+    await widgetPage.loadWidget(widgetConfigs.anonymous);
+    
+    // Type and send a message
+    const message = "Hello, I need help with something";
+    await widgetPage.chatInput.fill(message);
+    
+    // Wait for auto-save
+    await page.waitForTimeout(700);
+    
+    // Send the message
+    await widgetPage.sendButton.click();
+    
+    // Wait for message to be sent
+    await widgetPage.waitForResponse();
+    
+    // Close and re-open widget
+    await page.click("[data-helper-toggle]");
+    await page.waitForTimeout(500);
+    await page.click("[data-helper-toggle]");
+    
+    // Wait for iframe to load
+    await page.waitForSelector("iframe", { state: "visible" });
+    await widgetPage.chatInput.waitFor({ state: "visible" });
+    
+    // Check that draft is cleared
+    const restoredValue = await widgetPage.chatInput.inputValue();
+    expect(restoredValue).toBe("");
+  });
 });
