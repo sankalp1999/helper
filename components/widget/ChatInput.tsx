@@ -79,7 +79,7 @@ export default function ChatInput({
   const [fileError, setFileError] = useState<string | null>(null);
   const { screenshot, setScreenshot, screenshotState, setScreenshotState } = useScreenshotStore();
   const [savedDraft, setSavedDraft] = useExpiringLocalStorage<string>("widget_draft", {
-    expirationTime: 1000 * 60 * 60 * 24, // 24 hours
+    expirationTime: 1000 * 60 * 60 * 24,
     shouldStore: (value) => value.trim().length > 0,
   });
 
@@ -142,16 +142,14 @@ export default function ChatInput({
     adjustTextareaHeight();
   }, [input]);
 
-  // Auto-save draft with debouncing
   useEffect(() => {
     const timer = setTimeout(() => {
       setSavedDraft(input.trim() ? input : "");
-    }, 500); // 500ms debounce
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [input, setSavedDraft]);
 
-  // Restore draft on mount
   useEffect(() => {
     if (!input && savedDraft && inputRef.current) {
       const event = {
@@ -335,7 +333,6 @@ export default function ChatInput({
       setSelectedFiles([]);
     }
 
-    // Clear draft after successful submission
     setSavedDraft("");
   };
 
