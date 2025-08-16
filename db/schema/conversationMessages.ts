@@ -89,8 +89,8 @@ export const conversationMessages = pgTable(
       .concurrently(),
     index("messages_role_created_at_idx").on(table.role, table.createdAt).concurrently(),
     // Performance indexes for common queries
-    index("idx_messages_conversation_role_created").on(table.conversationId, table.role, table.createdAt.desc()),
-    index("idx_messages_conversation_created").on(table.conversationId, table.createdAt.desc()),
+    index("idx_messages_conversation_role_created").on(table.conversationId, table.role, table.createdAt.desc().nullsLast()),
+    index("idx_messages_conversation_created").on(table.conversationId, table.createdAt.desc().nullsLast()),
   ],
 ).enableRLS();
 
