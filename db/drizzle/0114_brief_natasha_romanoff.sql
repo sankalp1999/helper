@@ -1,0 +1,3 @@
+CREATE INDEX "idx_messages_conversation_role_created" ON "messages" USING btree ("conversation_id","role","created_at" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "idx_messages_conversation_created" ON "messages" USING btree ("conversation_id","created_at" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "idx_conversations_mailbox_status" ON "conversations_conversation" USING btree ("mailbox_id","status");

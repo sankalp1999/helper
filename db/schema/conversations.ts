@@ -76,6 +76,8 @@ export const conversations = pgTable(
     index("conversations_conversation_status_last_user_email_created_at_idx")
       .on(table.status, table.lastUserEmailCreatedAt.desc().nullsLast())
       .where(isNull(table.mergedIntoId)),
+    // Performance index for mailbox and status filtering
+    index("idx_conversations_mailbox_status").on(table.unused_mailboxId, table.status),
   ],
 ).enableRLS();
 
