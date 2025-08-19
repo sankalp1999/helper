@@ -1,2 +1,2 @@
-CREATE INDEX CONCURRENTLY "messages_conversation_created_at_desc_idx" ON "messages" USING btree ("conversation_id","created_at" DESC NULLS LAST) WHERE ("messages"."deleted_at" is null and "messages"."role" in ($1, $2));--> statement-breakpoint
+CREATE INDEX "messages_conversation_created_at_desc_idx" ON "messages" USING btree ("conversation_id","created_at" DESC NULLS LAST) WHERE ("messages"."deleted_at" IS NULL AND "messages"."role" IN ('user', 'staff'));--> statement-breakpoint
 CREATE INDEX "platformcustomer_value_idx" ON "mailboxes_platformcustomer" USING btree ("value" DESC NULLS LAST);
