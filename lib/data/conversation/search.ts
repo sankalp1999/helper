@@ -180,6 +180,7 @@ export const searchConversations = async (
           WHERE ${and(
             eq(conversationMessages.conversationId, conversations.id),
             inArray(conversationMessages.role, ["user", "staff"]),
+            isNull(${conversationMessages.deletedAt}),
           )}
           ORDER BY ${desc(conversationMessages.createdAt)}
           LIMIT 1
