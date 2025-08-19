@@ -88,7 +88,7 @@ export const conversationMessages = pgTable(
     index("messages_conversation_created_at_desc_idx")
       .on(table.conversationId, table.createdAt.desc())
       .where(and(isNull(table.deletedAt), inArray(table.role, ["user", "staff"])))
-      .concurrently(),
+      ,
   ],
 ).enableRLS();
 
