@@ -1,5 +1,6 @@
 import { and, inArray, isNull, relations, sql } from "drizzle-orm";
 import { bigint, boolean, index, jsonb, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { assertDefined } from "@/components/utils/assert";
 import { PromptInfo } from "@/lib/ai/promptInfo";
 import { CustomerInfo } from "@/types/customerInfo";
 import { withTimestamps } from "../lib/with-timestamps";
@@ -87,7 +88,7 @@ export const conversationMessages = pgTable(
     index("messages_role_created_at_idx").on(table.role, table.createdAt).concurrently(),
     index("messages_conversation_created_at_desc_idx")
       .on(table.conversationId, table.createdAt.desc())
-      .where(and(isNull(table.deletedAt), inArray(table.role, ["user", "staff"]))),
+      .where(assertDefined(and(isNull(table.deletedAt), inArray(table.role, ["user", "staff"])))),
   ],
 ).enableRLS();
 
