@@ -1,0 +1,15 @@
+
+> helperai@0.3.0 with-dev-env /Users/sankalp/Desktop/antiwork/helper
+> dotenv -e ./.env.development -e ./.env.development.local -e ./.env.local -- tsx --conditions\=react-server /tmp/bench-conv.ts --search\=download --pages\=5 --limit\=50
+
+{
+  "branch": "keyset",
+  "search": "download",
+  "pages": 5,
+  "limit": 50,
+  "times_ms": [
+    30
+  ],
+  "p50_ms": 30,
+  "p95_ms": 30
+}

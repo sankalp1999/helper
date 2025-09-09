@@ -1,0 +1,53 @@
+
+> helperai@0.3.0 with-dev-env /Users/sankalp/Desktop/antiwork/helper
+> dotenv -e ./.env.development -e ./.env.development.local -e ./.env.local -- tsx scripts/bench/bench-sql.ts --mode\=offset --pages\=20 --limit\=50 --explain\=1
+
+Limit  (cost=28024.84..28455.41 rows=50 width=136) (actual time=690.905..712.176 rows=50 loops=1)
+  Output: c.id, c.slug, c.subject, c.email_from, c.created_at, c.last_message_at, m.cleaned_up_text, m.created_at, (COALESCE(c.last_message_at, c.created_at))
+  Buffers: shared hit=3555 read=5686, temp read=1306 written=3395
+  ->  Nested Loop Left Join  (cost=19843.98..1914538.97 rows=220021 width=136) (actual time=385.690..712.027 rows=1000 loops=1)
+        Output: c.id, c.slug, c.subject, c.email_from, c.created_at, c.last_message_at, m.cleaned_up_text, m.created_at, COALESCE(c.last_message_at, c.created_at)
+        Buffers: shared hit=3555 read=5686, temp read=1306 written=3395
+        ->  Gather Merge  (cost=19835.51..45460.58 rows=220021 width=104) (actual time=385.354..393.601 rows=1000 loops=1)
+              Output: c.id, c.slug, c.subject, c.email_from, c.created_at, c.last_message_at
+              Workers Planned: 2
+              Workers Launched: 2
+              Buffers: shared hit=90 read=5118, temp read=1306 written=3395
+              ->  Sort  (cost=18835.48..19064.67 rows=91675 width=104) (actual time=364.720..364.872 rows=616 loops=3)
+                    Output: c.id, c.slug, c.subject, c.email_from, c.created_at, c.last_message_at, (COALESCE(c.last_message_at, c.created_at))
+                    Sort Key: (COALESCE(c.last_message_at, c.created_at)) DESC, c.id DESC
+                    Sort Method: external merge  Disk: 8832kB
+                    Buffers: shared hit=90 read=5118, temp read=1306 written=3395
+                    Worker 0:  actual time=360.080..360.176 rows=820 loops=1
+                      Sort Method: external merge  Disk: 9696kB
+                      Buffers: shared hit=45 read=1823, temp read=492 written=1215
+                    Worker 1:  actual time=354.008..354.089 rows=703 loops=1
+                      Sort Method: external merge  Disk: 8560kB
+                      Buffers: shared hit=45 read=1617, temp read=389 written=1073
+                    ->  Parallel Seq Scan on public.conversations_conversation c  (cost=0.00..6264.02 rows=91675 width=104) (actual time=0.917..243.462 rows=73344 loops=3)
+                          Output: c.id, c.slug, c.subject, c.email_from, c.created_at, c.last_message_at, COALESCE(c.last_message_at, c.created_at)
+                          Filter: ((c.merged_into_id IS NULL) AND ((c.status = 'open'::text) OR (c.status IS NULL)))
+                          Rows Removed by Filter: 1
+                          Buffers: shared read=5118
+                          Worker 0:  actual time=0.619..228.049 rows=78389 loops=1
+                            Buffers: shared read=1823
+                          Worker 1:  actual time=0.369..237.232 rows=69531 loops=1
+                            Buffers: shared read=1617
+        ->  Limit  (cost=8.47..8.48 rows=1 width=24) (actual time=0.317..0.317 rows=1 loops=1000)
+              Output: m.cleaned_up_text, m.created_at
+              Buffers: shared hit=3465 read=568
+              ->  Sort  (cost=8.47..8.48 rows=2 width=24) (actual time=0.317..0.317 rows=1 loops=1000)
+                    Output: m.cleaned_up_text, m.created_at
+                    Sort Key: m.created_at DESC
+                    Sort Method: quicksort  Memory: 25kB
+                    Buffers: shared hit=3465 read=568
+                    ->  Index Scan using conversations_email_conversation_id_391ad973 on public.messages m  (cost=0.42..8.46 rows=2 width=24) (actual time=0.305..0.314 rows=2 loops=1000)
+                          Output: m.cleaned_up_text, m.created_at
+                          Index Cond: (m.conversation_id = c.id)
+                          Filter: ((m.deleted_at IS NULL) AND (m.role = ANY ('{user,staff}'::text[])))
+                          Buffers: shared hit=3465 read=568
+Query Identifier: 9153553516872535506
+Planning:
+  Buffers: shared hit=731 read=19
+Planning Time: 47.414 ms
+Execution Time: 713.761 ms

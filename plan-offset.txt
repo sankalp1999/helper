@@ -1,0 +1,39 @@
+
+> helperai@0.3.0 with-dev-env /Users/sankalp/Desktop/antiwork/helper
+> dotenv -e ./.env.development -e ./.env.development.local -e ./.env.local -- tsx scripts/bench/bench-sql.ts --mode\=offset --pages\=20 --limit\=50 --explain\=1
+
+Limit  (cost=169337.49..169337.62 rows=50 width=135) (actual time=132.785..132.822 rows=50 loops=1)
+  Output: c.id, c.slug, c.subject, c.email_from, c.created_at, c.last_message_at, m.cleaned_up_text, m.created_at, (COALESCE(c.last_message_at, c.created_at))
+  Buffers: shared hit=60632
+  ->  Sort  (cost=169335.12..169385.20 rows=20032 width=135) (actual time=132.616..132.787 rows=1000 loops=1)
+        Output: c.id, c.slug, c.subject, c.email_from, c.created_at, c.last_message_at, m.cleaned_up_text, m.created_at, (COALESCE(c.last_message_at, c.created_at))
+        Sort Key: (COALESCE(c.last_message_at, c.created_at)) DESC, c.id DESC
+        Sort Method: top-N heapsort  Memory: 502kB
+        Buffers: shared hit=60632
+        ->  Nested Loop Left Join  (cost=8.34..168236.79 rows=20032 width=135) (actual time=0.461..125.352 rows=20032 loops=1)
+              Output: c.id, c.slug, c.subject, c.email_from, c.created_at, c.last_message_at, m.cleaned_up_text, m.created_at, COALESCE(c.last_message_at, c.created_at)
+              Buffers: shared hit=60626
+              ->  Seq Scan on public.conversations_conversation c  (cost=0.00..718.45 rows=20032 width=102) (actual time=0.063..29.932 rows=20032 loops=1)
+                    Output: c.id, c.slug, c.subject, c.email_from, c.created_at, c.last_message_at
+                    Filter: ((c.merged_into_id IS NULL) AND ((c.status = 'open'::text) OR (c.status IS NULL)))
+                    Rows Removed by Filter: 4
+                    Buffers: shared hit=468
+              ->  Limit  (cost=8.34..8.34 rows=1 width=25) (actual time=0.004..0.004 rows=1 loops=20032)
+                    Output: m.cleaned_up_text, m.created_at
+                    Buffers: shared hit=60158
+                    ->  Sort  (cost=8.34..8.35 rows=2 width=25) (actual time=0.004..0.004 rows=1 loops=20032)
+                          Output: m.cleaned_up_text, m.created_at
+                          Sort Key: m.created_at DESC
+                          Sort Method: quicksort  Memory: 25kB
+                          Buffers: shared hit=60158
+                          ->  Index Scan using conversations_email_conversation_id_391ad973 on public.messages m  (cost=0.29..8.33 rows=2 width=25) (actual time=0.003..0.004 rows=2 loops=20032)
+                                Output: m.cleaned_up_text, m.created_at
+                                Index Cond: (m.conversation_id = c.id)
+                                Filter: ((m.deleted_at IS NULL) AND (m.role = ANY ('{user,staff}'::text[])))
+                                Rows Removed by Filter: 0
+                                Buffers: shared hit=60158
+Query Identifier: 9153553516872535506
+Planning:
+  Buffers: shared hit=732
+Planning Time: 9.599 ms
+Execution Time: 133.219 ms
