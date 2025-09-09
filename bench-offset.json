@@ -1,0 +1,18 @@
+
+> helperai@0.3.0 with-dev-env /Users/sankalp/Desktop/antiwork/helper
+> dotenv -e ./.env.development -e ./.env.development.local -e ./.env.local -- tsx scripts/bench/bench-sql.ts --mode\=offset --pages\=5 --limit\=50
+
+{
+  "mode": "offset",
+  "pages": 5,
+  "limit": 50,
+  "times_ms": [
+    165,
+    42,
+    37,
+    34,
+    33
+  ],
+  "p50_ms": 37,
+  "p95_ms": 42
+}

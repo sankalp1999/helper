@@ -1,0 +1,18 @@
+
+> helperai@0.3.0 with-dev-env /Users/sankalp/Desktop/antiwork/helper
+> dotenv -e ./.env.development -e ./.env.development.local -e ./.env.local -- tsx scripts/bench/bench-sql.ts --mode\=keyset --pages\=5 --limit\=50
+
+{
+  "mode": "keyset",
+  "pages": 5,
+  "limit": 50,
+  "times_ms": [
+    77,
+    35,
+    32,
+    32,
+    30
+  ],
+  "p50_ms": 32,
+  "p95_ms": 35
+}
