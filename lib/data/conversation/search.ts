@@ -171,6 +171,7 @@ export const searchConversations = async (
     filters.status?.length === 1 && filters.status[0] === "closed"
       ? conversations.closedAt
       : sql`COALESCE(${conversations.lastMessageAt}, ${conversations.createdAt})`;
+  const isClosedTicketsOnly = filters.status?.length === 1 && filters.status[0] === "closed";
   const isOpenTicketsOnly = filters.status?.length === 1 && filters.status[0] === "open";
   const primaryOrderDesc = isOpenTicketsOnly ? filters.sort !== "oldest" : filters.sort !== "oldest";
   const orderBy = isOpenTicketsOnly
@@ -301,7 +302,7 @@ export const searchConversations = async (
         if (raw.length > rows.length && rows.length > 0) {
           const last = rows.at(-1)!;
           const conv = last.conversations_conversation;
-          const ts = conv.lastMessageAt ?? conv.createdAt ?? conv.closedAt ?? null;
+          const ts = isClosedTicketsOnly ? (conv.closedAt ?? null) : (conv.lastMessageAt ?? conv.createdAt ?? null);
 
           if (metadataEnabled && (filters.sort === "highest_value" || !filters.sort) && isOpenTicketsOnly) {
             const value = last.mailboxes_platformcustomer?.value ?? null;
