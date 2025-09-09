@@ -243,7 +243,12 @@ export const searchConversations = async (
       )
       .where(
         and(
-          ...Object.values(where),
+          ...Object.values({
+            ...where,
+            ...(metadataEnabled && (filters.sort === "highest_value" || !filters.sort) && isOpenTicketsOnly
+              ? { nonNullValue: isNotNull(platformCustomers.value) }
+              : {}),
+          }),
           // Keyset pagination cursor filter
           filters.cursor
             ? (() => {
@@ -320,7 +325,12 @@ export const searchConversations = async (
     get list() {
       return list();
     },
-    where,
+    where: {
+      ...where,
+      ...(metadataEnabled && (filters.sort === "highest_value" || !filters.sort) && isOpenTicketsOnly
+        ? { nonNullValue: isNotNull(platformCustomers.value) }
+        : {}),
+    },
     metadataEnabled,
   };
 };
