@@ -1,0 +1,1 @@
+CREATE INDEX "idx_conv_open_sort_ts_id" ON "conversations_conversation" USING btree ((COALESCE("last_message_at", "created_at")) DESC,"id" DESC NULLS LAST) WHERE ("conversations_conversation"."merged_into_id" is null and ("conversations_conversation"."status" = 'open' or "conversations_conversation"."status" is null));
